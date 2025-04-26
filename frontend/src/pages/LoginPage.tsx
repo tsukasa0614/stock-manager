@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 import '../styles/LoginPage.css';
 
 export const LoginPage = () => {
@@ -10,19 +11,21 @@ export const LoginPage = () => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    // 指定のID/パスワードでの認証
-    if (userId === 'mi' && password === 'tsu') {
-      // ログイン成功
-      login('dummy-token');  // 仮のトークン
+    try {
+      const response = await authService.login({ userId, password });
+      login(response);
       navigate('/home');
-    } else {
-      // ログイン失敗
-      setError('ユーザーIDまたはパスワードが間違っています');
+    } catch (error) {
+      setError('ログインに失敗しました。認証情報を確認してください。');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -36,6 +39,7 @@ export const LoginPage = () => {
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           className="login-input"
+          disabled={isLoading}
         />
         <input
           type="password"
@@ -43,10 +47,15 @@ export const LoginPage = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="login-input"
+          disabled={isLoading}
         />
         {error && <div className="error-message">{error}</div>}
-        <button type="submit" className="login-button">
-          ログイン
+        <button 
+          type="submit" 
+          className="login-button"
+          disabled={isLoading}
+        >
+          {isLoading ? 'ログイン中...' : 'ログイン'}
         </button>
       </form>
     </div>
