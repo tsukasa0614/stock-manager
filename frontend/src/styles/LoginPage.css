@@ -1,0 +1,179 @@
+/* メインコンテナ: 画面全体のスタイリング */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 50px;
+  min-height: 100vh;  /* 画面の高さいっぱいに広げる */
+  background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);  /* サイバーパンク風の背景グラデーション */
+  position: relative;
+  overflow: hidden;  /* アニメーションがはみ出ないように制御 */
+}
+
+/* 動く背景エフェクト: 回転するグラデーションオーバーレイ */
+.login-container::before {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, 
+    rgba(0, 255, 0, 0.1) 0%,   /* マトリックス風の緑 */
+    rgba(0, 0, 255, 0.1) 50%,  /* サイバー風の青 */
+    rgba(255, 0, 0, 0.1) 100%); /* アクセントの赤 */
+  animation: backgroundShift 15s linear infinite;  /* 永続的な回転アニメーション */
+  z-index: 0;
+}
+
+/* 背景の回転アニメーション定義 */
+@keyframes backgroundShift {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ログインフォームのコンテナ: ガラスモーフィズム効果 */
+.login-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 300px;
+  background: rgba(255, 255, 255, 0.1);  /* 半透明の背景 */
+  backdrop-filter: blur(10px);  /* 背景のブラー効果 */
+  border: 1px solid rgba(0, 255, 255, 0.2);  /* 光る境界線 */
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);  /* ネオン風の影 */
+  z-index: 1;
+}
+
+/* 入力フィールドのスタイル */
+.login-input {
+  padding: 15px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.05);  /* 半透明の入力欄 */
+  border: 2px solid rgba(0, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #ffffff;
+  transition: all 0.3s ease;
+}
+
+/* 入力フィールドのフォーカス時の効果 */
+.login-input:focus {
+  outline: none;
+  border-color: #00ff00;  /* ネオングリーンの境界線 */
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);  /* 光る効果 */
+}
+
+/* プレースホルダーテキストのスタイル */
+.login-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ログインボタンのベーススタイル */
+.login-button {
+  padding: 15px;
+  font-size: 16px;
+  background: linear-gradient(45deg, #00ff00, #00ccff);  /* サイバーパンク風のグラデーション */
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;  /* リップルエフェクトが収まるように */
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* ホバー時のボタン効果 */
+.login-button:hover {
+  background: linear-gradient(45deg, #00ccff, #00ff00);  /* グラデーション反転 */
+  transform: translateY(-2px);  /* 浮き上がる効果 */
+  box-shadow: 0 5px 15px rgba(0, 255, 0, 0.3);
+}
+
+/* クリック時のボタン効果 */
+.login-button:active {
+  transform: translateY(2px);  /* へこむ効果 */
+  box-shadow: 0 2px 5px rgba(0, 255, 0, 0.3);
+}
+
+/* ボタンクリック時の波紋エフェクト */
+.login-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+
+/* 波紋の拡大アニメーション */
+.login-button:active::after {
+  width: 200px;
+  height: 200px;
+  opacity: 0;
+}
+
+/* ホームリンクのコンテナ */
+.home-link {
+  margin-top: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ホームリンクのスタイル */
+.home-link a {
+  color: #00ff00;  /* ネオングリーン */
+  text-decoration: none;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  position: relative;
+  padding: 5px 10px;
+}
+
+/* ホームリンクのホバーエフェクト（下線） */
+.home-link a::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, #00ff00, #00ccff);
+  transform: scaleX(0);  /* 初期状態では非表示 */
+  transition: transform 0.3s ease;
+}
+
+/* ホバー時に下線を表示 */
+.home-link a:hover::before {
+  transform: scaleX(1);
+}
+
+/* タイトルのスタイル */
+h1 {
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 30px;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);  /* ネオン風の文字光効果 */
+}
+
+/* エラーメッセージのスタイル */
+.error-message {
+  color: #ff3e3e;
+  text-align: center;
+  font-size: 14px;
+  padding: 5px;
+  background: rgba(255, 0, 0, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 0, 0, 0.2);
+} 
