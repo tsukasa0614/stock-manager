@@ -3,7 +3,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 50px;
+  padding-top: 80px;
   min-height: 100vh;  /* 画面の高さいっぱいに広げる */
   background: linear-gradient(135deg, #1a1a1a 0%, #2c3e50 100%);  /* サイバーパンク風の背景グラデーション */
   position: relative;
