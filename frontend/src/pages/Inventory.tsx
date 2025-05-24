@@ -4,12 +4,16 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { FaBoxOpen, FaTruck, FaArrowUp, FaMapMarkerAlt, FaClipboardList, FaMap } from "react-icons/fa";
 
-const menuItems = [
+// 管理者用メニュー
+const adminMenuItems = [
   { key: "register", label: "在庫登録・削除", icon: <FaBoxOpen /> },
+  { key: "locations", label: "場所登録・削除", icon: <FaMapMarkerAlt /> },
+];
+
+// 一般ユーザー用メニュー
+const userMenuItems = [
   { key: "receiving", label: "在庫入荷", icon: <FaTruck /> },
   { key: "shipping", label: "在庫出荷", icon: <FaArrowUp /> },
-  { key: "locations", label: "場所登録・削除", icon: <FaMapMarkerAlt /> },
-  { key: "factorymap", label: "工場マップ", icon: <FaMap /> },
   { key: "check", label: "在庫確認", icon: <FaClipboardList /> },
 ];
 
@@ -21,15 +25,53 @@ const dummyStock = [
 
 const Inventory: React.FC = () => {
   const [selected, setSelected] = useState("check");
+  const [isAdmin, setIsAdmin] = useState(false); // 管理者フラグ
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-blue-100 to-blue-200">
       <div className="max-w-7xl mx-auto p-8">
-        <h1 className="text-2xl font-bold mb-8 text-blue-900">在庫管理</h1>
-        {/* メニューカード群 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          {menuItems.map(item => (
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-2xl font-bold text-blue-900">在庫管理</h1>
+          <Button
+            onClick={() => setIsAdmin(!isAdmin)}
+            className="bg-blue-500 hover:bg-blue-600 text-white"
+          >
+            {isAdmin ? "管理者モード" : "一般ユーザーモード"}
+          </Button>
+        </div>
+
+        {/* 管理者用メニュー */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+            {adminMenuItems.map(item => (
+              <Card
+                key={item.key}
+                className={`cursor-pointer transition-all shadow-md border-2 ${
+                  selected === item.key
+                    ? "border-blue-500 ring-2 ring-blue-300 scale-[1.03] bg-white"
+                    : "border-blue-100 hover:border-blue-300 hover:scale-105 bg-white/80 backdrop-blur-sm"
+                }`}
+                onClick={() => {
+                  if (item.key === "register") {
+                    navigate("/inventory/register");
+                  } else {
+                    setSelected(item.key);
+                  }
+                }}
+              >
+                <CardHeader className="flex flex-row items-center gap-4 py-6">
+                  <div className={`text-3xl ${selected === item.key ? "text-blue-500" : "text-blue-400"}`}>{item.icon}</div>
+                  <CardTitle className="text-lg font-semibold text-blue-900">{item.label}</CardTitle>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* 一般ユーザー用メニュー */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+          {userMenuItems.map(item => (
             <Card
               key={item.key}
               className={`cursor-pointer transition-all shadow-md border-2 ${
@@ -37,13 +79,7 @@ const Inventory: React.FC = () => {
                   ? "border-blue-500 ring-2 ring-blue-300 scale-[1.03] bg-white"
                   : "border-blue-100 hover:border-blue-300 hover:scale-105 bg-white/80 backdrop-blur-sm"
               }`}
-              onClick={() => {
-                if (item.key === "register") {
-                  navigate("/inventory/register");
-                } else {
-                  setSelected(item.key);
-                }
-              }}
+              onClick={() => setSelected(item.key)}
             >
               <CardHeader className="flex flex-row items-center gap-4 py-6">
                 <div className={`text-3xl ${selected === item.key ? "text-blue-500" : "text-blue-400"}`}>{item.icon}</div>
