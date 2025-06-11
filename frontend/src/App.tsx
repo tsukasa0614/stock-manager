@@ -5,7 +5,7 @@ import Home from "./pages/Home";
 import Inventory from "./pages/Inventory";
 import Orders from "./pages/Orders";
 import Factories from "./pages/Factories";
-import Users from "./pages/Users";
+import { Users } from "./pages/Users";
 import Settings from "./pages/Settings";
 import InventoryRegister from "./pages/InventoryRegister";
 import './App.css';

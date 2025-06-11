@@ -8,6 +8,8 @@ import {
   Users,
   Settings,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { FaBox } from "react-icons/fa";
@@ -55,8 +57,8 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <div className="h-screen w-64 bg-gradient-to-b from-indigo-600 via-indigo-500 to-indigo-600 border-r border-indigo-400/20 flex flex-col">
-      <div className="p-6 border-b border-indigo-400/20">
+    <div className="h-screen w-64 bg-gradient-to-b from-gray-800 via-gray-700 to-gray-800 border-r border-gray-600/20 flex flex-col">
+      <div className="p-4 border-b border-gray-600/20">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
             <FaBox className="w-6 h-6 text-white" />
@@ -73,12 +75,12 @@ export function Sidebar() {
                 to={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   location.pathname === item.href
-                    ? "bg-white/20 text-white shadow-lg shadow-indigo-500/20"
+                    ? "bg-white/20 text-white shadow-lg shadow-gray-500/20"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.color}`}>
-                  <item.icon className="w-4 h-4" />
+                <div className={`min-w-[2rem] h-8 rounded-lg flex items-center justify-center ${item.color}`}>
+                  <item.icon className="w-5 h-5" />
                 </div>
                 <span className="font-medium">{item.title}</span>
               </Link>
@@ -87,7 +89,7 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="p-4 border-t border-indigo-400/20">
+      <div className="p-4 border-t border-gray-600/20">
         <div className="flex items-center gap-3 p-3 bg-white/10 rounded-xl">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center text-white font-bold">
             U

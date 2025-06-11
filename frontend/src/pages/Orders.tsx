@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { FaDownload, FaRedo, FaBolt, FaExclamationTriangle, FaBox, FaLink, FaTimes } from "react-icons/fa";
+import { UserModeSwitch } from "../components/common/UserModeSwitch";
 
 const dummyOrders = [
   { id: 1, product: "商品A", quantity: 100, supplier: "サプライヤーA", status: "発注済", date: "2024-03-15", type: "リピート" },
@@ -814,11 +815,14 @@ const Orders: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-orange-200">
-      <div className="max-w-7xl mx-auto p-8">
+    <div className="container mx-auto py-6 space-y-6">
+      {/* 本番では削除: 開発用のユーザー切り替え機能 */}
+      <UserModeSwitch />
+
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-gray-900">商品発注</h1>
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-orange-900">商品発注</h1>
             <Button variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-50 hover:scale-105 transition-transform duration-200 shadow-md">
               <FaBox className="mr-2" />
               商品一覧
