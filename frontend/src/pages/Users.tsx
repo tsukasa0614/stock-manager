@@ -119,7 +119,7 @@ export function Users() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-red-100">
       <div className="container mx-auto py-6 space-y-6">
         {/* 本番では削除: 開発用のユーザー切り替え機能 */}
         <UserModeSwitch />
@@ -128,11 +128,11 @@ export function Users() {
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-red-500 to-rose-600 rounded-xl">
                 <FaUsers className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
                   ユーザー管理
                 </h1>
                 <p className="text-gray-600">User Management System</p>
@@ -144,7 +144,7 @@ export function Users() {
                   setEditingUser(undefined);
                   setIsDialogOpen(true);
                 }}
-                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
               >
                 <FaUserPlus />
                 ユーザーを追加
@@ -226,7 +226,7 @@ export function Users() {
                       placeholder="名前またはメールアドレス"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                     />
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export function Users() {
                   <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value as "all" | "admin" | "user")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                   >
                     <option value="all">すべて</option>
                     <option value="admin">管理者</option>
@@ -247,7 +247,7 @@ export function Users() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
                   >
                     <option value="all">すべて</option>
                     <option value="active">アクティブ</option>
@@ -260,8 +260,8 @@ export function Users() {
 
           {/* ユーザーリスト */}
           <Card className="shadow-xl bg-white border-0">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
-              <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
+            <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-200">
+              <CardTitle className="text-red-900 text-lg flex items-center gap-2">
                 <FaChartLine />
                 ユーザー一覧 ({filteredUsers.length}人)
               </CardTitle>

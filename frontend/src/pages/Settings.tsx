@@ -66,15 +66,26 @@ const Settings: React.FC = () => {
   const ToggleSwitch = ({ enabled, onChange }: { enabled: boolean; onChange: () => void }) => (
     <button
       onClick={onChange}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        enabled ? 'bg-purple-600' : 'bg-gray-300'
+      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+        enabled ? 'bg-gradient-to-r from-purple-500 to-purple-600 shadow-lg' : 'bg-gray-400 shadow-md'
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          enabled ? 'translate-x-6' : 'translate-x-1'
+        className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition-all duration-300 ease-in-out ${
+          enabled ? 'translate-x-7' : 'translate-x-0.5'
         }`}
       />
+      {/* ON/OFF表示 */}
+      <span className={`absolute text-xs font-semibold transition-opacity duration-300 ${
+        enabled ? 'left-2 text-white opacity-100' : 'left-2 text-gray-600 opacity-0'
+      }`}>
+        ON
+      </span>
+      <span className={`absolute text-xs font-semibold transition-opacity duration-300 ${
+        !enabled ? 'right-2 text-black opacity-100' : 'right-2 text-gray-600 opacity-0'
+      }`}>
+        OFF
+      </span>
     </button>
   );
 
@@ -330,7 +341,7 @@ const Settings: React.FC = () => {
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
-                    : 'text-purple-700 hover:bg-purple-100'
+                    : 'text-white hover:bg-purple-100 hover:text-purple-700'
                 }`}
               >
                 {tab.icon}

@@ -30,24 +30,24 @@ interface UserListProps {
 
 export function UserList({ users, isAdmin, onEdit, onDelete }: UserListProps) {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border bg-white">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead>名前</TableHead>
-            <TableHead>メールアドレス</TableHead>
-            <TableHead>権限</TableHead>
-            <TableHead>ステータス</TableHead>
-            <TableHead>最終ログイン</TableHead>
-            <TableHead>作成日</TableHead>
-            {isAdmin && <TableHead className="w-[100px]">操作</TableHead>}
+          <TableRow className="bg-gray-50">
+            <TableHead className="text-gray-700">名前</TableHead>
+            <TableHead className="text-gray-700">メールアドレス</TableHead>
+            <TableHead className="text-gray-700">権限</TableHead>
+            <TableHead className="text-gray-700">ステータス</TableHead>
+            <TableHead className="text-gray-700">最終ログイン</TableHead>
+            <TableHead className="text-gray-700">作成日</TableHead>
+            {isAdmin && <TableHead className="w-[100px] text-gray-700">操作</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
           {users.map((user) => (
-            <TableRow key={user.id} className="hover:bg-gray-50">
-              <TableCell className="font-medium">{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
+            <TableRow key={user.id} className="hover:bg-gray-50 bg-white">
+              <TableCell className="font-medium text-gray-900">{user.name}</TableCell>
+              <TableCell className="text-gray-700">{user.email}</TableCell>
               <TableCell>
                 <Badge 
                   variant={user.role === "admin" ? "default" : "secondary"}
@@ -64,18 +64,18 @@ export function UserList({ users, isAdmin, onEdit, onDelete }: UserListProps) {
                   {user.status === "active" ? "アクティブ" : "非アクティブ"}
                 </Badge>
               </TableCell>
-              <TableCell>
+              <TableCell className="text-gray-700">
                 {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : "未ログイン"}
               </TableCell>
-              <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+              <TableCell className="text-gray-700">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
               {isAdmin && (
-                <TableCell>
+                <TableCell className="bg-white">
                   <div className="flex gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => onEdit?.(user)}
-                      className="hover:bg-purple-100 hover:text-purple-600"
+                      className="hover:bg-purple-100 hover:text-purple-600 bg-white border border-purple-200 text-purple-500"
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
@@ -83,7 +83,7 @@ export function UserList({ users, isAdmin, onEdit, onDelete }: UserListProps) {
                       variant="ghost"
                       size="icon"
                       onClick={() => onDelete?.(user)}
-                      className="hover:bg-red-100 hover:text-red-600"
+                      className="hover:bg-red-100 hover:text-red-600 bg-white border border-red-200 text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

@@ -3,7 +3,7 @@ import { Layout } from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Inventory from "./pages/Inventory";
-import Stocktaking from "./pages/Orders";
+import Stocktaking from "./pages/Stocktaking";
 import Factories from "./pages/Factories";
 import { Users } from "./pages/Users";
 import Settings from "./pages/Settings";
@@ -19,7 +19,7 @@ function App() {
           <Route path="/home" element={<Home />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/inventory/register" element={<InventoryRegister />} />
-          <Route path="/orders" element={<Stocktaking />} />
+          <Route path="/stocktaking" element={<Stocktaking />} />
           <Route path="/factories" element={<Factories />} />
           <Route path="/users" element={<Users />} />
           <Route path="/settings" element={<Settings />} />

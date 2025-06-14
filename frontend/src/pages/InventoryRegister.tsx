@@ -119,7 +119,7 @@ const InventoryRegister: React.FC = () => {
           placeholder="商品名または商品コードで検索..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
         />
       </div>
       
@@ -157,10 +157,10 @@ const InventoryRegister: React.FC = () => {
                   {tab === "delete" && (
                     <Button
                       size="sm"
-                      variant="destructive"
+                      className="bg-red-500 hover:bg-red-600 text-white shadow-lg"
                       onClick={() => {
-                        if (confirm(`${product.name}を削除しますか？`)) {
-                          alert(`${product.name}を削除しました`);
+                        if (confirm(`【削除確認】\n\n商品名: ${product.name}\n商品コード: ${product.code}\n\nこの商品を完全に削除しますか？\nこの操作は取り消せません。`)) {
+                          alert(`✅ ${product.name} を削除しました`);
                         }
                       }}
                     >
@@ -213,7 +213,7 @@ const InventoryRegister: React.FC = () => {
             required
             value={formData.code}
             onChange={(e) => handleInputChange("code", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="例: PROD-001"
           />
         </div>
@@ -223,7 +223,7 @@ const InventoryRegister: React.FC = () => {
             required
             value={formData.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="商品名を入力"
           />
         </div>
@@ -235,7 +235,7 @@ const InventoryRegister: React.FC = () => {
           <input
             value={formData.spec}
             onChange={(e) => handleInputChange("spec", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="例: 500g, 1L, 大サイズ"
           />
         </div>
@@ -245,7 +245,7 @@ const InventoryRegister: React.FC = () => {
             required
             value={formData.category}
             onChange={(e) => handleInputChange("category", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
           >
             <option value="">カテゴリーを選択</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -263,7 +263,7 @@ const InventoryRegister: React.FC = () => {
             min="0"
             value={formData.stock}
             onChange={(e) => handleInputChange("stock", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
         </div>
@@ -275,7 +275,7 @@ const InventoryRegister: React.FC = () => {
             min="0"
             value={formData.minStock}
             onChange={(e) => handleInputChange("minStock", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
         </div>
@@ -285,7 +285,7 @@ const InventoryRegister: React.FC = () => {
             required
             value={formData.unit}
             onChange={(e) => handleInputChange("unit", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
           >
             <option value="">単位を選択</option>
             {units.map(u => <option key={u} value={u}>{u}</option>)}
@@ -303,7 +303,7 @@ const InventoryRegister: React.FC = () => {
             step="0.01"
             value={formData.price}
             onChange={(e) => handleInputChange("price", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
         </div>
@@ -313,7 +313,7 @@ const InventoryRegister: React.FC = () => {
             required
             value={formData.location}
             onChange={(e) => handleInputChange("location", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
           >
             <option value="">保管場所を選択</option>
             {locations.map(l => <option key={l} value={l}>{l}</option>)}
@@ -327,7 +327,7 @@ const InventoryRegister: React.FC = () => {
         <textarea
           value={formData.memo}
           onChange={(e) => handleInputChange("memo", e.target.value)}
-          className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+          className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white text-gray-900 placeholder-gray-500"
           placeholder="商品に関するメモや注意事項を入力"
           rows={4}
         />
@@ -417,12 +417,20 @@ const InventoryRegister: React.FC = () => {
             </CardHeader>
             <CardContent className="p-8">
               {(tab === "edit" || tab === "delete") && renderProductSearch()}
-              {(tab === "add" || (tab === "edit" && selectedProduct) || tab === "delete") && renderForm()}
+              {(tab === "add" || (tab === "edit" && selectedProduct)) && renderForm()}
               
               {tab === "edit" && !selectedProduct && (
                 <div className="text-center py-12 text-gray-500">
                   <FaSearch className="text-4xl mx-auto mb-4 text-gray-300" />
                   <p className="text-lg">編集する商品を検索して選択してください</p>
+                </div>
+              )}
+              
+              {tab === "delete" && (
+                <div className="text-center py-12 text-gray-500">
+                  <FaTrash className="text-4xl mx-auto mb-4 text-red-300" />
+                  <p className="text-lg">削除する商品を検索して選択してください</p>
+                  <p className="text-sm mt-2">商品カードの削除ボタンをクリックすると削除されます</p>
                 </div>
               )}
             </CardContent>

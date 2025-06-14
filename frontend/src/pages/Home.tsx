@@ -87,7 +87,7 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-100">
       <div className="container mx-auto py-6 space-y-6">
         {/* 本番では削除: 開発用のユーザー切り替え機能 */}
         <UserModeSwitch />
@@ -175,8 +175,8 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* 在庫ステータス */}
             <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
-                <CardTitle className="text-blue-900 text-lg flex items-center gap-2">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
                   <FaBoxOpen />
                   在庫ステータス
                 </CardTitle>
@@ -217,8 +217,8 @@ const Home: React.FC = () => {
 
             {/* 倉庫別状況 */}
             <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-200">
-                <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
                   <FaWarehouse />
                   倉庫別状況
                 </CardTitle>
@@ -255,8 +255,8 @@ const Home: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* アラート履歴 */}
             <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-red-50 to-red-100 border-b border-red-200">
-                <CardTitle className="text-red-900 text-lg flex items-center gap-2">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
                   <FaBell />
                   重要アラート
                 </CardTitle>
@@ -283,8 +283,8 @@ const Home: React.FC = () => {
 
             {/* 最近の活動 */}
             <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
-                <CardTitle className="text-green-900 text-lg flex items-center gap-2">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
                   <FaHistory />
                   最近の活動
                 </CardTitle>
@@ -312,8 +312,8 @@ const Home: React.FC = () => {
 
             {/* 最近の棚卸結果 */}
             <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200">
-                <CardTitle className="text-indigo-900 text-lg flex items-center gap-2">
+              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
                   <FaClipboardCheck />
                   棚卸結果
                 </CardTitle>

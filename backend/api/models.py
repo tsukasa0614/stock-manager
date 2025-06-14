@@ -28,6 +28,7 @@ class Account(AbstractUser):
     
     objects=AccountManager()
 
+# 在庫
 class Inventory(models.Model):
     id = models.AutoField(primary_key=True)
     image = models.ImageField(upload_to="inventory_images/",null=True,blank=True)
@@ -45,7 +46,7 @@ class Inventory(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
 
-    
+#工場    
 class Factory(models.Model):
     id = models.AutoField(primary_key=True)
     factory_name = models.CharField(max_length=255)
@@ -57,7 +58,8 @@ class Factory(models.Model):
     memo = models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+#在庫移動
 class StockMovement(models.Model):
     id = models.AutoField(primary_key=True)
     item_id = models.ForeignKey(Inventory,on_delete=models.CASCADE)
@@ -66,7 +68,8 @@ class StockMovement(models.Model):
     reason = models.CharField(max_length=255,null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+#棚卸し
 class Stocktaking(models.Model):
     id = models.AutoField(primary_key=True)
     item_id = models.ForeignKey(Inventory,on_delete=models.CASCADE)

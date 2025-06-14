@@ -83,7 +83,7 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                 required
               />
             </div>
@@ -96,7 +96,7 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
                 required
               />
             </div>
@@ -108,7 +108,7 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
                   setFormData({ ...formData, role: value })
                 }
               >
-                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,7 +125,7 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
                   setFormData({ ...formData, status: value })
                 }
               >
-                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
