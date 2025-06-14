@@ -28,3 +28,9 @@ class Account(AbstractUser):
     
     objects=AccountManager()
 
+class Inventory(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    count=models.IntegerField(default=0)
+    
+    

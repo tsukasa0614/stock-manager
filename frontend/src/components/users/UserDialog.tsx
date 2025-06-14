@@ -22,13 +22,15 @@ interface User {
   name: string;
   email: string;
   role: "admin" | "user";
+  lastLogin?: string;
+  status: "active" | "inactive";
 }
 
 interface UserDialogProps {
   user?: User;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (user: Omit<User, "id">) => void;
+  onSubmit: (user: Omit<User, "id" | "createdAt">) => void;
 }
 
 export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogProps) {
@@ -36,6 +38,7 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
     name: "",
     email: "",
     role: "user",
+    status: "active",
   });
 
   React.useEffect(() => {
@@ -44,12 +47,15 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
         name: user.name,
         email: user.email,
         role: user.role,
+        status: user.status,
+        lastLogin: user.lastLogin,
       });
     } else {
       setFormData({
         name: "",
         email: "",
         role: "user",
+        status: "active",
       });
     }
   }, [user]);
@@ -61,25 +67,28 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{user ? "ユーザーを編集" : "ユーザーを追加"}</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-purple-900">
+            {user ? "ユーザーを編集" : "ユーザーを追加"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-6 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">名前</Label>
+              <Label htmlFor="name" className="text-sm font-medium text-gray-700">名前</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
+                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">メールアドレス</Label>
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">メールアドレス</Label>
               <Input
                 id="email"
                 type="email"
@@ -87,29 +96,60 @@ export function UserDialog({ user, open, onOpenChange, onSubmit }: UserDialogPro
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
+                className="focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="role">権限</Label>
+              <Label htmlFor="role" className="text-sm font-medium text-gray-700">権限</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: "admin" | "user") =>
                   setFormData({ ...formData, role: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">一般</SelectItem>
+                  <SelectItem value="user">一般ユーザー</SelectItem>
                   <SelectItem value="admin">管理者</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="status" className="text-sm font-medium text-gray-700">ステータス</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value: "active" | "inactive") =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger className="focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">アクティブ</SelectItem>
+                  <SelectItem value="inactive">非アクティブ</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit">{user ? "更新" : "追加"}</Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              className="mr-2"
+            >
+              キャンセル
+            </Button>
+            <Button 
+              type="submit"
+              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+            >
+              {user ? "更新" : "追加"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

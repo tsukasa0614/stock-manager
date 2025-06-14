@@ -28,7 +28,7 @@ const menuItems = [
     color: "bg-blue-500",
   },
   {
-    title: "商品発注",
+    title: "棚卸管理",
     href: "/orders",
     icon: ShoppingCart,
     color: "bg-orange-500",
