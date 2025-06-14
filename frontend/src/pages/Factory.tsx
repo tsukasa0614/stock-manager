@@ -1,4 +1,3 @@
-import React from "react";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
 
 export function Factory() {
