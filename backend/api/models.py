@@ -30,7 +30,52 @@ class Account(AbstractUser):
 
 class Inventory(models.Model):
     id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255)
-    count=models.IntegerField(default=0)
+    image = models.ImageField(upload_to="inventory_images/",null=True,blank=True)
+    item_code = models.CharField(max_length=255,unique=True)
+    product_name = models.CharField(max_length=255)
+    standard = models.CharField(max_length=255,null=True,blank=True)
+    category = models.CharField(max_length=255)
+    stock_quantity = models.IntegerField(default=0)
+    lowest_stock = models.IntegerField(default=0)
+    unit = models.CharField(max_length=255)
+    unit_price = models.DecimalField(max_digits=10,decimal_places=2,default=0.00)
+    storing_place = models.CharField(max_length=255,null=True,blank=True)
+    memo = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
+
+    
+class Factory(models.Model):
+    id = models.AutoField(primary_key=True)
+    factory_name = models.CharField(max_length=255)
+    address = models.CharField(max_length=255)
+    phone = models.CharField(max_length=255)
+    manager = models.CharField(max_length=255)
+    status = models.CharField(max_length=255)
+    capacity = models.IntegerField(default=0)
+    memo = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+class StockMovement(models.Model):
+    id = models.AutoField(primary_key=True)
+    item_id = models.ForeignKey(Inventory,on_delete=models.CASCADE)
+    movement_type = models.CharField(max_length=255)
+    quantity = models.IntegerField(default=0)
+    reason = models.CharField(max_length=255,null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+class Stocktaking(models.Model):
+    id = models.AutoField(primary_key=True)
+    item_id = models.ForeignKey(Inventory,on_delete=models.CASCADE)
+    theoretical_stock = models.IntegerField(default=0)
+    actual_stock = models.IntegerField(default=0)
+    difference = models.IntegerField(default=0)
+    user_id = models.ForeignKey(Account,on_delete=models.CASCADE)
+    status = models.CharField(max_length=255)
+    memo = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
