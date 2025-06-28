@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
@@ -10,12 +10,16 @@ import Settings from "./pages/Settings";
 import InventoryRegister from "./pages/InventoryRegister";
 import './App.css';
 
+function AppLayout() {
+  return <Layout><Outlet /></Layout>;
+}
+
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route element={<Layout />}>
+        <Route element={<AppLayout />}>
           <Route path="/home" element={<Home />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/inventory/register" element={<InventoryRegister />} />

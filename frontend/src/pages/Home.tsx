@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { FaBell, FaHistory, FaArrowDown, FaArrowUp, FaBoxOpen, FaClipboardCheck, FaUsers, FaIndustry, FaPlus, FaEdit, FaSearch, FaChartLine, FaWarehouse, FaThermometerHalf, FaCloudSun, FaFire, FaClock, FaCheckCircle, FaExclamationTriangle, FaTruck, FaCalendarAlt } from "react-icons/fa";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
+import { FaBell, FaHistory, FaArrowDown, FaArrowUp, FaBoxOpen, FaClipboardCheck, FaUsers, FaPlus, FaChartLine, FaWarehouse, FaExclamationTriangle } from "react-icons/fa";
 
 // 今日の実績データ
 const todayStats = {
@@ -57,11 +55,10 @@ const dummyActivities = [
 ];
 
 const Home: React.FC = () => {
-  const navigate = useNavigate();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -108,10 +105,7 @@ const Home: React.FC = () => {
             </div>
             <div className="text-right">
               <p className="text-lg font-semibold text-gray-900">
-                {currentTime.toLocaleTimeString('ja-JP')}
-              </p>
-              <p className="text-sm text-gray-600">
-                {currentTime.toLocaleDateString('ja-JP')}
+                {currentTime}
               </p>
             </div>
           </div>

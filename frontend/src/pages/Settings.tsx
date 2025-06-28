@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { Badge } from "../components/ui/badge";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { useAuth } from "../hooks/useAuth";
 import { 
   FaCog, 
   FaBell, 
@@ -36,7 +34,6 @@ interface SettingsState {
 }
 
 const Settings: React.FC = () => {
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"system" | "notifications" | "appearance">("system");
   const [settings, setSettings] = useState<SettingsState>({
     language: "ja",

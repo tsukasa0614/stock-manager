@@ -1,13 +1,11 @@
-import React from "react";
-import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 
-export function Layout() {
+export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <main className="flex-1 overflow-auto">
-        <Outlet />
+        {children}
       </main>
     </div>
   );

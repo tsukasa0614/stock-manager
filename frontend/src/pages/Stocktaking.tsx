@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { FaClipboardCheck, FaPlay, FaStop, FaSave, FaHistory, FaSearch, FaBarcode, FaChartLine, FaBoxOpen, FaCalendarAlt, FaCheckCircle, FaClock, FaArrowUp, FaArrowDown, FaEquals } from "react-icons/fa";
+import { FaClipboardCheck, FaPlay, FaStop, FaHistory, FaSearch, FaChartLine, FaBoxOpen, FaCalendarAlt, FaCheckCircle, FaClock, FaArrowUp, FaArrowDown, FaEquals } from "react-icons/fa";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
 import { useAuth } from "../hooks/useAuth";
 
@@ -84,12 +84,6 @@ const Stocktaking: React.FC = () => {
   // 棚卸終了
   const endStocktaking = () => {
     if (currentSession) {
-      const updatedSession = {
-        ...currentSession,
-        endDate: new Date().toISOString().split('T')[0],
-        status: "完了" as const,
-        checkedItems: items.filter(item => item.actualStock !== null).length
-      };
       setCurrentSession(null);
       setCurrentView("summary");
     }
@@ -497,7 +491,7 @@ const Stocktaking: React.FC = () => {
       </div>
 
       <div className="grid gap-4">
-        {dummyHistory.map((session, index) => (
+        {dummyHistory.map((session) => (
           <Card key={session.id} className="shadow-lg hover:shadow-xl transition-all duration-300 bg-white border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">

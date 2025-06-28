@@ -1,12 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { UserList } from "../components/users/UserList";
 import { UserDialog } from "../components/users/UserDialog";
 import { Button } from "../components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
 import { useAuth } from "../hooks/useAuth";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { FaUsers, FaUserShield, FaUserPlus, FaChartLine, FaCrown, FaUserCheck, FaCalendarAlt, FaSearch, FaFilter } from "react-icons/fa";
+import { FaUsers, FaUserPlus, FaChartLine, FaCrown, FaUserCheck, FaCalendarAlt, FaSearch } from "react-icons/fa";
 
 interface User {
   id: string;

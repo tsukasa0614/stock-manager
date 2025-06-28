@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch, FaEye } from "react-icons/fa";
+import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch } from "react-icons/fa";
 
 const tabs = [
   { key: "add", label: "在庫登録", icon: <FaPlus />, color: "from-blue-500 to-blue-600" },
