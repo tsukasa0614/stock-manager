@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -88,6 +88,7 @@ const STATUS_CONFIG: Record<StockStatus, { label: string; color: string; textCol
 
 const Inventory: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
+  const [inventoryList, setInventoryList] = useState<StockItem[]>([]);
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -108,7 +109,14 @@ const Inventory: React.FC = () => {
       setSelected(key);
     }
   };
-
+  useEffect(() => {
+    const fechData = async () => {
+      const response = await fetch("http://localhost:8000/api/inventories/");
+      const data = await response.json();
+      setInventoryList(data);
+    };
+    fechData();
+  }, []);
   const renderStatsCards = () => (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
@@ -264,7 +272,7 @@ const Inventory: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {dummyStock.map((stock, index) => (
+              {inventoryList.map((stock, index) => (
                 <tr key={stock.id} className={`hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -280,13 +288,13 @@ const Inventory: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-bold text-gray-900">{stock.quantity}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">¥{stock.unitPrice.toLocaleString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">¥{stock.unitPrice?.toLocaleString()}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                     ¥{(stock.quantity * stock.unitPrice).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={`${STATUS_CONFIG[stock.status].color} ${STATUS_CONFIG[stock.status].textColor}`}>
-                      {STATUS_CONFIG[stock.status].label}
+                    <Badge className={`${STATUS_CONFIG[stock.status]?.color} ${STATUS_CONFIG[stock.status]?.textColor}`}>
+                      {STATUS_CONFIG[stock.status]?.label}
                     </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stock.updated}</td>

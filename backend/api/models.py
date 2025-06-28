@@ -31,19 +31,20 @@ class Account(AbstractUser):
 # 在庫
 class Inventory(models.Model):
     id = models.AutoField(primary_key=True)
-    image = models.ImageField(upload_to="inventory_images/",null=True,blank=True)
-    item_code = models.CharField(max_length=255,unique=True)
-    product_name = models.CharField(max_length=255)
-    standard = models.CharField(max_length=255,null=True,blank=True)
-    category = models.CharField(max_length=255)
-    stock_quantity = models.IntegerField(default=0)
-    lowest_stock = models.IntegerField(default=0)
-    unit = models.CharField(max_length=255)
-    unit_price = models.DecimalField(max_digits=10,decimal_places=2,default=0.00)
-    storing_place = models.CharField(max_length=255,null=True,blank=True)
-    memo = models.TextField(null=True,blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    image = models.ImageField(upload_to="inventory_images/",null=True,blank=True, help_text="画像")
+    item_code = models.CharField(max_length=255,unique=True, help_text="商品コード")
+    product_name = models.CharField(max_length=255, help_text="商品名")
+    standard = models.CharField(max_length=255,null=True,blank=True, help_text="規格")
+    category = models.CharField(max_length=255, help_text="カテゴリ")
+    stock_quantity = models.IntegerField(default=0, help_text="在庫数")
+    lowest_stock = models.IntegerField(default=0, help_text="最低在庫数")
+    unit = models.CharField(max_length=255, help_text="単位")
+    unit_price = models.DecimalField(max_digits=10,decimal_places=2,default=0.00, help_text="単価")
+    storing_place = models.CharField(max_length=255,null=True,blank=True, help_text="保管場所")
+    memo = models.TextField(null=True,blank=True, help_text="メモ")
+    
+    created_at = models.DateTimeField(auto_now_add=True, help_text="作成日時")
+    updated_at = models.DateTimeField(auto_now=True, help_text="更新日時")
     
 
 #工場    
@@ -52,8 +53,10 @@ class Factory(models.Model):
     factory_name = models.CharField(max_length=255)
     address = models.CharField(max_length=255)
     phone = models.CharField(max_length=255)
-    manager = models.CharField(max_length=255)
-    status = models.CharField(max_length=255)
+    status = models.CharField(max_length=255,choices=[
+        ("active","active"),
+        ("inactive","inactive")
+        ],default="active")
     capacity = models.IntegerField(default=0)
     memo = models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -63,9 +66,12 @@ class Factory(models.Model):
 class StockMovement(models.Model):
     id = models.AutoField(primary_key=True)
     item_id = models.ForeignKey(Inventory,on_delete=models.CASCADE)
-    movement_type = models.CharField(max_length=255)
+    movement_type = models.CharField(max_length=255,choices=[
+        ("in","in"),
+        ("out","out")
+        ],default="in")
     quantity = models.IntegerField(default=0)
-    reason = models.CharField(max_length=255,null=True,blank=True)
+    reason = models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

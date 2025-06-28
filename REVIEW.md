@@ -1,0 +1,2 @@
+- Factoryテーブル
+    - managerを「Manager」テーブルで分ける
