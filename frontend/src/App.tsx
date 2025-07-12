@@ -1,8 +1,10 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Layout } from "./components/layout/Layout";
+import { AlertProvider } from "./contexts/AlertContext";
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import Inventory from "./pages/Inventory";
+import ProductDetail from "./pages/ProductDetail";
 import Stocktaking from "./pages/Stocktaking";
 import Factories from "./pages/Factories";
 import { Users } from "./pages/Users";
@@ -18,21 +20,24 @@ function AppLayout() {
 function App() {
   return (
     <ErrorBoundary>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route element={<AppLayout />}>
-            <Route path="/home" element={<Home />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/inventory/register" element={<InventoryRegister />} />
-            <Route path="/stocktaking" element={<Stocktaking />} />
-            <Route path="/factories" element={<Factories />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/" element={<Navigate to="/home" replace />} />
-          </Route>
-        </Routes>
-      </Router>
+      <AlertProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route element={<AppLayout />}>
+              <Route path="/home" element={<Home />} />
+              <Route path="/inventory" element={<Inventory />} />
+              <Route path="/inventory/detail/:itemCode" element={<ProductDetail />} />
+              <Route path="/inventory/register" element={<InventoryRegister />} />
+              <Route path="/stocktaking" element={<Stocktaking />} />
+              <Route path="/factories" element={<Factories />} />
+              <Route path="/users" element={<Users />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/" element={<Navigate to="/home" replace />} />
+            </Route>
+          </Routes>
+        </Router>
+      </AlertProvider>
     </ErrorBoundary>
   );
 }

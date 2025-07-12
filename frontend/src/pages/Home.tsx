@@ -1,8 +1,18 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { AlertBanner } from "../components/alerts/AlertBanner";
+import { FaBoxOpen, FaTruck, FaArrowUp, FaMapMarkerAlt, FaClipboardList, FaChartBar, FaBell, FaExclamationTriangle } from "react-icons/fa";
 import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { FaBell, FaHistory, FaArrowDown, FaArrowUp, FaBoxOpen, FaClipboardCheck, FaUsers, FaPlus, FaChartLine, FaWarehouse, FaExclamationTriangle } from "react-icons/fa";
+import { useAuth } from "../hooks/useAuth";
+import { useAlert } from "../contexts/AlertContext";
+import { apiClient, type InventoryItem } from "../api/client";
+import { Badge } from "../components/ui/badge";
+import { FaHistory, FaArrowDown, FaPlus, FaWarehouse } from "react-icons/fa";
+import { FaClipboardCheck } from "react-icons/fa";
+import { FaUsers } from "react-icons/fa";
+import { FaChartLine } from "react-icons/fa";
 
 // 今日の実績データ
 const todayStats = {
@@ -56,11 +66,55 @@ const dummyActivities = [
 
 const Home: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
+  const { user } = useAuth();
+  const { alerts, unreadCount, criticalCount, generateAlertsFromInventory } = useAlert();
+  const navigate = useNavigate();
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // 在庫データを取得し、アラートを生成
+  useEffect(() => {
+    const fetchInventoryAndGenerateAlerts = async () => {
+      try {
+        const response = await apiClient.getInventory("");
+        if (response && Array.isArray(response) && isMountedRef.current) {
+          setInventoryList(response);
+          // 在庫データからアラートを生成
+          generateAlertsFromInventory(response);
+        }
+      } catch (error) {
+        console.error('在庫データの取得に失敗しました:', error);
+      }
+    };
+
+    fetchInventoryAndGenerateAlerts();
+    
+    // 5分ごとに在庫データを確認してアラートを生成
+    const interval = setInterval(fetchInventoryAndGenerateAlerts, 5 * 60 * 1000);
+    
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [generateAlertsFromInventory]);
+
+  // 統計データを計算
+  const stats = {
+    totalItems: inventoryList.length,
+    totalQuantity: inventoryList.reduce((sum, item) => sum + item.stock_quantity, 0),
+    totalValue: inventoryList.reduce((sum, item) => sum + (item.stock_quantity * parseFloat(item.unit_price)), 0),
+    lowStockItems: inventoryList.filter(item => item.stock_quantity <= item.lowest_stock).length,
+    outOfStockItems: inventoryList.filter(item => item.stock_quantity === 0).length,
+    alertsUnread: unreadCount,
+    alertsCritical: criticalCount
+  };
+
+  const overStockItems = inventoryList.filter(item => item.stock_quantity > item.lowest_stock * 3).length;
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -84,254 +138,265 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-amber-50 to-yellow-100">
-      <div className="container mx-auto py-6 space-y-6">
-        {/* 本番では削除: 開発用のユーザー切り替え機能 */}
-        <UserModeSwitch />
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* ヘッダー */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">在庫管理システム</h1>
+          <p className="text-gray-600">現在時刻: {currentTime}</p>
+          <div className="mt-4 flex justify-center">
+            <UserModeSwitch />
+          </div>
+        </div>
 
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
-          {/* ヘッダー */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl">
-                <FaChartLine className="text-2xl text-white" />
+        {/* アラート通知バナー */}
+        <div className="mb-8">
+          <AlertBanner maxVisible={3} />
+        </div>
+
+        {/* 統計カード */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-600 text-sm font-medium">総商品数</p>
+                  <p className="text-3xl font-bold text-blue-800">{stats.totalItems}</p>
+                </div>
+                <FaBoxOpen className="text-4xl text-blue-400" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-yellow-600 bg-clip-text text-transparent">
-                  ダッシュボード
-                </h1>
-                <p className="text-gray-600">Inventory Management Dashboard</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-emerald-600 text-sm font-medium">総在庫数</p>
+                  <p className="text-3xl font-bold text-emerald-800">{stats.totalQuantity}</p>
+                </div>
+                <FaClipboardList className="text-4xl text-emerald-400" />
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-semibold text-gray-900">
-                {currentTime}
-              </p>
-            </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-600 text-sm font-medium">総在庫価値</p>
+                  <p className="text-2xl font-bold text-purple-800">¥{stats.totalValue.toLocaleString()}</p>
+                </div>
+                <FaChartBar className="text-4xl text-purple-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-600 text-sm font-medium">要注意商品</p>
+                  <p className="text-3xl font-bold text-red-800">{stats.lowStockItems + stats.outOfStockItems}</p>
+                </div>
+                <FaExclamationTriangle className="text-4xl text-red-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* アラート統計カード */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-600 text-sm font-medium">未読アラート</p>
+                  <p className="text-3xl font-bold text-orange-800">{stats.alertsUnread}</p>
+                  <p className="text-orange-600 text-xs">確認が必要な通知</p>
+                </div>
+                <FaBell className="text-4xl text-orange-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-yellow-600 text-sm font-medium">緊急アラート</p>
+                  <p className="text-3xl font-bold text-yellow-800">{stats.alertsCritical}</p>
+                  <p className="text-yellow-600 text-xs">即座に対応が必要</p>
+                </div>
+                <FaExclamationTriangle className="text-4xl text-yellow-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* メインコンテンツエリア */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+          {/* 在庫状況 */}
+          <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200 shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-indigo-900 text-xl flex items-center gap-2">
+                <FaBoxOpen className="text-indigo-600" />
+                在庫状況
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaExclamationTriangle className="text-red-500" />
+                    <span className="text-sm">在庫切れ</span>
+                  </div>
+                  <span className="font-bold text-red-600">{stats.outOfStockItems}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaExclamationTriangle className="text-yellow-500" />
+                    <span className="text-sm">在庫少</span>
+                  </div>
+                  <span className="font-bold text-yellow-600">{stats.lowStockItems}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaBoxOpen className="text-green-500" />
+                    <span className="text-sm">適正在庫</span>
+                  </div>
+                  <span className="font-bold text-green-600">{stats.totalItems - stats.outOfStockItems - stats.lowStockItems}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FaBoxOpen className="text-blue-500" />
+                    <span className="text-sm">在庫過多</span>
+                  </div>
+                  <span className="font-bold text-blue-600">{overStockItems}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* アクションボタン */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Button 
+              onClick={() => navigate('/inventory')}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+            >
+              <FaBoxOpen className="mr-2" />
+              在庫確認
+            </Button>
+            <Button 
+              onClick={() => navigate('/inventory/register')}
+              className="bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+            >
+              <FaPlus className="mr-2" />
+              商品登録
+            </Button>
+            <Button 
+              onClick={() => navigate('/movement')}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+            >
+              <FaHistory className="mr-2" />
+              移動管理
+            </Button>
+            <Button 
+              onClick={() => navigate('/report')}
+              className="bg-orange-600 hover:bg-orange-700 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105"
+            >
+              <FaChartBar className="mr-2" />
+              レポート
+            </Button>
           </div>
+        </div>
 
-          {/* 今日の実績カード */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-600 text-sm font-medium">今日の入荷</p>
-                    <p className="text-3xl font-bold text-blue-800">{todayStats.received}</p>
-                    <p className="text-blue-600 text-xs">件</p>
-                  </div>
-                  <FaArrowDown className="text-4xl text-blue-400" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-emerald-600 text-sm font-medium">今日の出荷</p>
-                    <p className="text-3xl font-bold text-emerald-800">{todayStats.shipped}</p>
-                    <p className="text-emerald-600 text-xs">件</p>
-                  </div>
-                  <FaArrowUp className="text-4xl text-emerald-400" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-600 text-sm font-medium">新規登録</p>
-                    <p className="text-3xl font-bold text-purple-800">{todayStats.registered}</p>
-                    <p className="text-purple-600 text-xs">商品</p>
-                  </div>
-                  <FaPlus className="text-4xl text-purple-400" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-orange-600 text-sm font-medium">棚卸完了</p>
-                    <p className="text-3xl font-bold text-orange-800">{todayStats.stocktaking}</p>
-                    <p className="text-orange-600 text-xs">セッション</p>
-                  </div>
-                  <FaClipboardCheck className="text-4xl text-orange-400" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* メインコンテンツエリア */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            {/* 在庫ステータス */}
-            <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
-                  <FaBoxOpen />
-                  在庫ステータス
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                      <span className="text-sm">在庫切れ</span>
-                    </div>
-                    <span className="font-bold text-red-600">{stockStatus.outOfStock}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                      <span className="text-sm">在庫少</span>
-                    </div>
-                    <span className="font-bold text-yellow-600">{stockStatus.lowStock}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                      <span className="text-sm">適正在庫</span>
-                    </div>
-                    <span className="font-bold text-green-600">{stockStatus.normal}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                      <span className="text-sm">在庫過多</span>
-                    </div>
-                    <span className="font-bold text-blue-600">{stockStatus.overStock}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 倉庫別状況 */}
-            <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
-                  <FaWarehouse />
-                  倉庫別状況
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {warehouseStatus.map((warehouse, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{warehouse.name}</span>
-                        <span className="text-sm font-bold">{warehouse.usage}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${
-                            warehouse.usage >= 80 ? 'bg-red-500' :
-                            warehouse.usage >= 60 ? 'bg-yellow-500' : 'bg-green-500'
-                          }`}
-                          style={{ width: `${warehouse.usage}%` }}
-                        ></div>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500">
-                        <span>{warehouse.items}品目</span>
-                        <span>使用率{warehouse.capacity}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* アラート・活動履歴・棚卸結果 */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* アラート履歴 */}
-            <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
-                  <FaBell />
-                  重要アラート
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {dummyAlerts.map(alert => (
-                    <div key={alert.id} className={`p-3 rounded-lg border ${getSeverityColor(alert.severity)}`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{alert.message}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge variant="outline" className="text-xs">{alert.status}</Badge>
-                            <span className="text-xs text-gray-500">{alert.time}</span>
-                          </div>
-                        </div>
-                        {alert.severity === "high" && <FaExclamationTriangle className="text-red-500 mt-1" />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* 最近の活動 */}
-            <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
-                  <FaHistory />
-                  最近の活動
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {dummyActivities.map(activity => (
-                    <div key={activity.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <FaUsers className="text-blue-500 text-sm" />
-                      </div>
+        {/* アラート・活動履歴・棚卸結果 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          {/* アラート履歴 */}
+          <Card className="shadow-xl bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+              <CardTitle className="text-yellow-900 text-base md:text-lg flex items-center gap-2">
+                <FaBell />
+                重要アラート
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6">
+              <div className="space-y-2 md:space-y-3 max-h-64 md:max-h-80 overflow-y-auto">
+                {dummyAlerts.slice(0, 4).map(alert => (
+                  <div key={alert.id} className={`p-2 md:p-3 rounded-lg border ${getSeverityColor(alert.severity)}`}>
+                    <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <p className="text-sm">
-                          <span className="font-medium text-blue-700">{activity.user}</span>
-                          <span className="mx-1">が</span>
-                          <span className={getTypeColor(activity.type)}>{activity.action}</span>
-                        </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
+                        <p className="text-xs md:text-sm font-medium">{alert.message}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-xs">{alert.status}</Badge>
+                          <span className="text-xs text-gray-500">{alert.time}</span>
+                        </div>
                       </div>
+                      {alert.severity === "high" && <FaExclamationTriangle className="text-red-500 mt-1 flex-shrink-0" />}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* 最近の棚卸結果 */}
-            <Card className="shadow-xl bg-white border-0">
-              <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
-                <CardTitle className="text-yellow-900 text-lg flex items-center gap-2">
-                  <FaClipboardCheck />
-                  棚卸結果
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {recentStocktaking.map((result, index) => (
-                    <div key={index} className="p-3 bg-indigo-50 rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">{result.date}</span>
-                        <Badge className="bg-indigo-100 text-indigo-700">
-                          {result.accuracy}%
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                        <div>対象: {result.items}品目</div>
-                        <div>差異: {result.differences}件</div>
-                      </div>
+          {/* 最近の活動 */}
+          <Card className="shadow-xl bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+              <CardTitle className="text-yellow-900 text-base md:text-lg flex items-center gap-2">
+                <FaHistory />
+                最近の活動
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6">
+              <div className="space-y-2 md:space-y-3 max-h-64 md:max-h-80 overflow-y-auto">
+                {dummyActivities.slice(0, 6).map(activity => (
+                  <div key={activity.id} className="flex items-center gap-2 md:gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                    <div className="w-6 h-6 md:w-8 md:h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <FaUsers className="text-blue-500 text-xs md:text-sm" />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm">
+                        <span className="font-medium text-blue-700">{activity.user}</span>
+                        <span className="mx-1">が</span>
+                        <span className={getTypeColor(activity.type)}>{activity.action}</span>
+                      </p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 最近の棚卸結果 */}
+          <Card className="shadow-xl bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-yellow-50 to-amber-50 border-b border-yellow-200">
+              <CardTitle className="text-yellow-900 text-base md:text-lg flex items-center gap-2">
+                <FaClipboardCheck />
+                棚卸結果
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6">
+              <div className="space-y-3 md:space-y-4">
+                {recentStocktaking.map((result, index) => (
+                  <div key={index} className="p-2 md:p-3 bg-indigo-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs md:text-sm font-medium">{result.date}</span>
+                      <Badge className="bg-indigo-100 text-indigo-700 text-xs">
+                        {result.accuracy}%
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                      <div>対象: {result.items}品目</div>
+                      <div>差異: {result.differences}件</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
