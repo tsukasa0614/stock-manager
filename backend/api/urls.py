@@ -2,7 +2,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('health/', views.health_check, name='health_check'),
+    # 認証
+    path('login/', views.LoginView.as_view(), name='login'),
     
     # 在庫管理
     path('inventories/', views.InventoryListView.as_view(), name='inventory_list'),

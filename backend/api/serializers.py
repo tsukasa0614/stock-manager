@@ -1,5 +1,28 @@
 from .models import Inventory, StockMovement, Stocktaking, Factory
 from rest_framework import serializers
+from django.contrib.auth import authenticate
+
+class LoginSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        id = attrs.get('id')
+        password = attrs.get('password')
+        
+        if not id or not password:
+            raise serializers.ValidationError("IDとパスワードは必須です")
+        
+        user = authenticate(username=id, password=password)
+        
+        if not user:
+            raise serializers.ValidationError("IDまたはパスワードが間違っています")
+        
+        attrs['user'] = user
+        return attrs
+
+
+
 
 class InventorySerializer(serializers.ModelSerializer):
     factory_name = serializers.CharField(source='factory.factory_name', read_only=True)

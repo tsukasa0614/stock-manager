@@ -6,25 +6,29 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 from .models import Inventory, Factory, StockMovement, Stocktaking
-from .serializers import InventorySerializer, StockMovementSerializer, StocktakingSerializer, FactorySerializer
+from .serializers import InventorySerializer, StockMovementSerializer, StocktakingSerializer, FactorySerializer, LoginSerializer
+from rest_framework.permissions import AllowAny
+from rest_framework.authtoken.models import Token
 
-@api_view(['GET'])
-def health_check(request):
-    return Response({"status": "healthy"})
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data['user']
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'token': token.key})
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
 
 class InventoryListView(APIView):
     def get(self, request):
         """在庫一覧を取得"""
         user = request.user
-        
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from .models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+
         inventories = Inventory.objects.filter(factory__in=user.factories.all())
         # リクエストコンテキストを渡して画像URLが正しく生成されるようにする
         serializer = InventorySerializer(inventories, many=True, context={'request': request})

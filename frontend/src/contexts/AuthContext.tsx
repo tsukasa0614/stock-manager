@@ -20,9 +20,21 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [token, setToken] = useState<string | null>(null);
 
-    const login = (id: string, password: string) => {
-        // TODO: ログイン処理
-        setToken("test-token");
+    const login = async (id: string, password: string) => {
+        const response = await fetch('http://localhost:8000/api/login/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ id, password }),
+        });
+
+        if(!response.ok) {
+            throw new Error('ログインに失敗しました');
+        }
+
+        const data = await response.json();
+        setToken(data.token);
     };
 
     const logout = () => {
