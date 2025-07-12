@@ -18,10 +18,29 @@ class AccountManager(BaseUserManager):
         extra_fields.setdefault("is_superuser",True)
         
         return self.create_user(id,email,password,**extra_fields)
+
+#工場（Inventoryより前に定義）
+class Factory(models.Model):
+    id = models.AutoField(primary_key=True)
+    factory_name = models.CharField(max_length=255)
+    address = models.CharField(max_length=255)
+    phone = models.CharField(max_length=255)
+    status = models.CharField(max_length=255,choices=[
+        ("active","active"),
+        ("inactive","inactive")
+        ],default="active")
+    capacity = models.IntegerField(default=0)
+    memo = models.TextField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.factory_name
     
 class Account(AbstractUser):
     id=models.CharField(max_length=255, primary_key=True,unique=True)
     email =models.EmailField(blank=True)
+    factories = models.ManyToManyField(Factory, blank=True, help_text="管理する工場")
     
     USERNAME_FIELD="id"
     REQUIRED_FIELDS=["email"]
@@ -42,25 +61,13 @@ class Inventory(models.Model):
     unit_price = models.DecimalField(max_digits=10,decimal_places=2,default=0.00, help_text="単価")
     storing_place = models.CharField(max_length=255,null=True,blank=True, help_text="保管場所")
     memo = models.TextField(null=True,blank=True, help_text="メモ")
+    factory = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="所属工場")
     
     created_at = models.DateTimeField(auto_now_add=True, help_text="作成日時")
     updated_at = models.DateTimeField(auto_now=True, help_text="更新日時")
     
-
-#工場    
-class Factory(models.Model):
-    id = models.AutoField(primary_key=True)
-    factory_name = models.CharField(max_length=255)
-    address = models.CharField(max_length=255)
-    phone = models.CharField(max_length=255)
-    status = models.CharField(max_length=255,choices=[
-        ("active","active"),
-        ("inactive","inactive")
-        ],default="active")
-    capacity = models.IntegerField(default=0)
-    memo = models.TextField(null=True,blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return f"{self.item_code} - {self.product_name}"
 
 #在庫移動
 class StockMovement(models.Model):
@@ -72,6 +79,8 @@ class StockMovement(models.Model):
         ],default="in")
     quantity = models.IntegerField(default=0)
     reason = models.TextField(null=True,blank=True)
+    user_id = models.ForeignKey(Account, on_delete=models.CASCADE, help_text="実行者")
+    factory_id = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="対象工場")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
