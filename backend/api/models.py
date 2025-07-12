@@ -41,6 +41,7 @@ class Account(AbstractUser):
     id=models.CharField(max_length=255, primary_key=True,unique=True)
     email =models.EmailField(blank=True)
     factories = models.ManyToManyField(Factory, blank=True, help_text="管理する工場")
+    username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     
     USERNAME_FIELD="id"
     REQUIRED_FIELDS=["email"]

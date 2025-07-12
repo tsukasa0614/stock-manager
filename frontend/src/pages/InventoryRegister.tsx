@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch } from "react-icons/fa";
+import { apiClient, type InventoryItem, type Factory } from "../api/client";
 
 const tabs = [
   { key: "add", label: "在庫登録", icon: <FaPlus />, color: "from-blue-500 to-blue-600" },
@@ -11,39 +12,68 @@ const tabs = [
   { key: "delete", label: "在庫削除", icon: <FaTrash />, color: "from-red-500 to-red-600" },
 ];
 
-const categories = ["食品", "飲料", "日用品", "電化製品", "家具", "衣類", "文房具", "その他"];
+const categories = ["食品", "飲料", "日用品", "電化製品", "家具", "衣類", "文房具", "その他", "消耗品"];
 const units = ["個", "箱", "袋", "本", "kg", "g", "L", "mL", "m", "cm", "セット"];
 const locations = ["倉庫A-1", "倉庫A-2", "倉庫B-1", "倉庫B-2", "倉庫C-1", "倉庫C-2", "店舗前", "冷蔵庫"];
-
-// ダミー商品データ
-const dummyProducts = [
-  { id: 1, code: "PROD-001", name: "商品A", spec: "500g", category: "食品", stock: 120, minStock: 20, unit: "個", price: 150, location: "倉庫A-1", memo: "人気商品", image: null },
-  { id: 2, code: "PROD-002", name: "商品B", spec: "1L", category: "飲料", stock: 80, minStock: 15, unit: "本", price: 200, location: "倉庫A-2", memo: "", image: null },
-  { id: 3, code: "PROD-003", name: "商品C", spec: "300g", category: "食品", stock: 15, minStock: 30, unit: "個", price: 180, location: "倉庫B-1", memo: "要補充", image: null },
-  { id: 4, code: "PROD-004", name: "商品D", spec: "大サイズ", category: "日用品", stock: 0, minStock: 10, unit: "個", price: 300, location: "倉庫B-2", memo: "在庫切れ", image: null },
-];
 
 const InventoryRegister: React.FC = () => {
   const [tab, setTab] = useState("add");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
+  const [inventories, setInventories] = useState<InventoryItem[]>([]);
+  const [factories, setFactories] = useState<Factory[]>([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   // フォーム状態
   const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    spec: "",
+    item_code: "",
+    product_name: "",
+    standard: "",
     category: "",
-    stock: "",
-    minStock: "",
+    stock_quantity: "",
+    lowest_stock: "",
     unit: "",
-    price: "",
-    location: "",
+    unit_price: "",
+    storing_place: "",
     memo: "",
+    factory: "",
     image: null as File | null
   });
+
+  // データ読み込み
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // 在庫データと工場データを並行取得
+      const [inventoriesRes, factoriesRes] = await Promise.all([
+        apiClient.getInventories(),
+        apiClient.getFactories()
+      ]);
+
+      if (inventoriesRes.data) {
+        setInventories(inventoriesRes.data);
+      } else {
+        alert(inventoriesRes.error || "在庫データの取得に失敗しました");
+      }
+
+      if (factoriesRes.data) {
+        setFactories(factoriesRes.data);
+      } else {
+        alert(factoriesRes.error || "工場データの取得に失敗しました");
+      }
+    } catch (err) {
+      alert("データの読み込み中にエラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -63,51 +93,130 @@ const InventoryRegister: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      code: "",
-      name: "",
-      spec: "",
+      item_code: "",
+      product_name: "",
+      standard: "",
       category: "",
-      stock: "",
-      minStock: "",
+      stock_quantity: "",
+      lowest_stock: "",
       unit: "",
-      price: "",
-      location: "",
+      unit_price: "",
+      storing_place: "",
       memo: "",
+      factory: "",
       image: null
     });
     setPreviewImage(null);
     setSelectedProduct(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ここで実際の登録・編集・削除処理を行う
-    console.log("Form submitted:", formData);
-    alert(`${tabs.find(t => t.key === tab)?.label}が完了しました！`);
-    resetForm();
+    
+    try {
+      setLoading(true);
+      
+      // 基本データを準備
+      const data = {
+        item_code: formData.item_code,
+        product_name: formData.product_name,
+        standard: formData.standard,
+        category: formData.category,
+        stock_quantity: parseInt(formData.stock_quantity),
+        lowest_stock: parseInt(formData.lowest_stock),
+        unit: formData.unit,
+        unit_price: formData.unit_price,
+        storing_place: formData.storing_place,
+        memo: formData.memo,
+        factory: parseInt(formData.factory),
+      };
+
+      // 画像ファイルを取得（FormDataから）
+      const imageFile = formData.image || undefined;
+      
+      let response;
+      
+      if (tab === "add") {
+        // 新規作成：画像ファイルの有無に応じて適切なメソッドを使用
+        response = await apiClient.createInventoryWithImage(data, imageFile);
+        if (response.data) {
+          alert("✅ 商品を登録しました！");
+          resetForm();
+          loadInitialData(); // データを再読み込み
+          setTimeout(() => {
+            navigate("/inventory"); // 在庫管理画面に戻る
+          }, 1000);
+        } else {
+          alert(`❌ 登録に失敗しました: ${response.error}`);
+        }
+      } else if (tab === "edit" && selectedProduct) {
+        // 更新：画像ファイルの有無に応じて適切なメソッドを使用
+        response = await apiClient.updateInventoryWithImage(selectedProduct.item_code, data, imageFile);
+        if (response.data) {
+          alert("✅ 商品を更新しました！");
+          resetForm();
+          loadInitialData(); // データを再読み込み
+          setTimeout(() => {
+            navigate("/inventory"); // 在庫管理画面に戻る
+          }, 1000);
+        } else {
+          alert(`❌ 更新に失敗しました: ${response.error}`);
+        }
+      }
+    } catch (err) {
+      alert("❌ 処理中にエラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const filteredProducts = dummyProducts.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.code.toLowerCase().includes(searchTerm.toLowerCase())
+  const handleDelete = async (inventory: InventoryItem) => {
+    if (!confirm(`【削除確認】\n\n商品名: ${inventory.product_name}\n商品コード: ${inventory.item_code}\n\nこの商品を完全に削除しますか？\nこの操作は取り消せません。`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiClient.deleteInventory(inventory.item_code);
+      
+          if (response.status === 204) {
+      alert(`✅ ${inventory.product_name} を削除しました`);
+      loadInitialData(); // データを再読み込み
+      setTimeout(() => {
+        navigate("/inventory"); // 在庫管理画面に戻る
+      }, 1000);
+    } else {
+      alert(`❌ 削除に失敗しました: ${response.error}`);
+    }
+    } catch (err) {
+      alert("❌ 削除中にエラーが発生しました");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredProducts = inventories.filter(product =>
+    product.product_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    product.item_code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const loadProductForEdit = (product: any) => {
+  const loadProductForEdit = (product: InventoryItem) => {
     setSelectedProduct(product);
     setFormData({
-      code: product.code,
-      name: product.name,
-      spec: product.spec,
+      item_code: product.item_code,
+      product_name: product.product_name,
+      standard: product.standard || "",
       category: product.category,
-      stock: product.stock.toString(),
-      minStock: product.minStock.toString(),
+      stock_quantity: product.stock_quantity.toString(),
+      lowest_stock: product.lowest_stock.toString(),
       unit: product.unit,
-      price: product.price.toString(),
-      location: product.location,
-      memo: product.memo,
+      unit_price: product.unit_price,
+      storing_place: product.storing_place || "",
+      memo: product.memo || "",
+      factory: product.factory.toString(),
       image: null
     });
-    setPreviewImage(product.image);
+    setPreviewImage(product.image || null);
   };
 
   const renderProductSearch = () => (
@@ -125,22 +234,22 @@ const InventoryRegister: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-60 overflow-y-auto">
         {filteredProducts.map(product => (
-          <Card key={product.id} className="cursor-pointer hover:shadow-lg transition-all duration-200 border-blue-100">
+          <Card key={product.item_code} className="cursor-pointer hover:shadow-lg transition-all duration-200 border-blue-100">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
                   {product.image ? (
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+                    <img src={product.image} alt={product.product_name} className="w-full h-full object-cover rounded-lg" />
                   ) : (
                     <FaBoxOpen className="text-blue-400 text-xl" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{product.name}</p>
-                  <p className="text-sm text-gray-500">{product.code}</p>
+                  <p className="font-semibold text-gray-900 truncate">{product.product_name}</p>
+                  <p className="text-sm text-gray-500">{product.item_code}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                    <span className="text-xs text-gray-500">在庫: {product.stock}{product.unit}</span>
+                    <span className="text-xs text-gray-500">在庫: {product.stock_quantity}{product.unit}</span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
@@ -158,11 +267,7 @@ const InventoryRegister: React.FC = () => {
                     <Button
                       size="sm"
                       className="bg-red-500 hover:bg-red-600 text-white shadow-lg"
-                      onClick={() => {
-                        if (confirm(`【削除確認】\n\n商品名: ${product.name}\n商品コード: ${product.code}\n\nこの商品を完全に削除しますか？\nこの操作は取り消せません。`)) {
-                          alert(`✅ ${product.name} を削除しました`);
-                        }
-                      }}
+                      onClick={() => handleDelete(product)}
                     >
                       <FaTrash className="mr-1" />
                       削除
@@ -211,8 +316,8 @@ const InventoryRegister: React.FC = () => {
           <label className="block mb-2 font-semibold text-gray-700">商品コード *</label>
           <input
             required
-            value={formData.code}
-            onChange={(e) => handleInputChange("code", e.target.value)}
+            value={formData.item_code}
+            onChange={(e) => handleInputChange("item_code", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="例: PROD-001"
           />
@@ -221,8 +326,8 @@ const InventoryRegister: React.FC = () => {
           <label className="block mb-2 font-semibold text-gray-700">商品名 *</label>
           <input
             required
-            value={formData.name}
-            onChange={(e) => handleInputChange("name", e.target.value)}
+            value={formData.product_name}
+            onChange={(e) => handleInputChange("product_name", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="商品名を入力"
           />
@@ -233,8 +338,8 @@ const InventoryRegister: React.FC = () => {
         <div>
           <label className="block mb-2 font-semibold text-gray-700">規格</label>
           <input
-            value={formData.spec}
-            onChange={(e) => handleInputChange("spec", e.target.value)}
+            value={formData.standard}
+            onChange={(e) => handleInputChange("standard", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="例: 500g, 1L, 大サイズ"
           />
@@ -261,8 +366,8 @@ const InventoryRegister: React.FC = () => {
             required
             type="number"
             min="0"
-            value={formData.stock}
-            onChange={(e) => handleInputChange("stock", e.target.value)}
+            value={formData.stock_quantity}
+            onChange={(e) => handleInputChange("stock_quantity", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
@@ -273,8 +378,8 @@ const InventoryRegister: React.FC = () => {
             required
             type="number"
             min="0"
-            value={formData.minStock}
-            onChange={(e) => handleInputChange("minStock", e.target.value)}
+            value={formData.lowest_stock}
+            onChange={(e) => handleInputChange("lowest_stock", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
@@ -301,22 +406,36 @@ const InventoryRegister: React.FC = () => {
             type="number"
             min="0"
             step="0.01"
-            value={formData.price}
-            onChange={(e) => handleInputChange("price", e.target.value)}
+            value={formData.unit_price}
+            onChange={(e) => handleInputChange("unit_price", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
             placeholder="0"
           />
         </div>
-        <div>
-          <label className="block mb-2 font-semibold text-gray-700">保管場所 *</label>
+                <div>
+          <label className="block mb-2 font-semibold text-gray-700">保管場所</label>
           <select
-            required
-            value={formData.location}
-            onChange={(e) => handleInputChange("location", e.target.value)}
+            value={formData.storing_place}
+            onChange={(e) => handleInputChange("storing_place", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
           >
             <option value="">保管場所を選択</option>
             {locations.map(l => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-1">
+        <div>
+          <label className="block mb-2 font-semibold text-gray-700">工場 *</label>
+          <select
+            required
+            value={formData.factory}
+            onChange={(e) => handleInputChange("factory", e.target.value)}
+            className="w-full border border-blue-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+          >
+            <option value="">工場を選択</option>
+            {factories.map(f => <option key={f.id} value={f.id}>{f.factory_name}</option>)}
           </select>
         </div>
       </div>
@@ -338,14 +457,19 @@ const InventoryRegister: React.FC = () => {
         <Button
           type="submit"
           className={`flex-1 bg-gradient-to-r ${tabs.find(t => t.key === tab)?.color} hover:opacity-90 text-white py-3 text-lg font-semibold`}
+          disabled={loading}
         >
-          {tab === "add" && <FaPlus className="mr-2" />}
-          {tab === "edit" && <FaEdit className="mr-2" />}
-          {tab === "delete" && <FaTrash className="mr-2" />}
-          {tabs.find(t => t.key === tab)?.label}
+          {loading ? "処理中..." : (
+            <>
+              {tab === "add" && <FaPlus className="mr-2" />}
+              {tab === "edit" && <FaEdit className="mr-2" />}
+              {tab === "delete" && <FaTrash className="mr-2" />}
+              {tabs.find(t => t.key === tab)?.label}
+            </>
+          )}
         </Button>
-        <Button type="button" variant="outline" onClick={resetForm} className="flex-1 py-3 text-lg">
-          リセット
+        <Button type="button" variant="outline" onClick={resetForm} className="flex-1 py-3 text-lg" disabled={loading}>
+          {loading ? "リセット中..." : "リセット"}
         </Button>
       </div>
     </form>
@@ -410,7 +534,7 @@ const InventoryRegister: React.FC = () => {
                 {tabs.find(t => t.key === tab)?.label}
                 {selectedProduct && tab === "edit" && (
                   <Badge className="bg-emerald-100 text-emerald-700">
-                    編集中: {selectedProduct.name}
+                    編集中: {selectedProduct.product_name}
                   </Badge>
                 )}
               </CardTitle>
