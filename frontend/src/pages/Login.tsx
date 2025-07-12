@@ -3,16 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { FaUser, FaLock } from 'react-icons/fa';
 import '../styles/Login.css';
 import { Button } from '../components/ui/button';
+import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
+
 const Login: React.FC = () => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  const { login, token } = useAuth();
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: 実際のログイン処理を実装
-    navigate('/home');
+    if (login) {
+      login(userId, password);
+    }
   };
+
+  useEffect(() => {
+    if (token) {
+      navigate('/home');
+    }
+  }, [token]);
 
   return (
     <div className="login-container">

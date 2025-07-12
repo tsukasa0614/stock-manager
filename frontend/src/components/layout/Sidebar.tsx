@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { FaBox } from "react-icons/fa";
+import { useAuth } from "../../contexts/AuthContext";
+
 
 const menuItems = [
   {
@@ -58,6 +60,7 @@ export function Sidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <>
@@ -165,7 +168,11 @@ export function Sidebar() {
                 variant="ghost"
                 size="icon"
                 className="w-8 h-8 text-gray-500 hover:text-gray-700 hover:bg-gray-200"
-                onClick={() => {}}
+                onClick={() => {
+                  if (logout) {
+                    logout();
+                  }
+                }}
               >
                 <X className="w-4 h-4" />
               </Button>
