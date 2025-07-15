@@ -2,12 +2,9 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { useAuth } from "../hooks/useAuth";
+import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { useAuth } from "../contexts/AuthContext";
 import { 
   FaIndustry, 
   FaWarehouse,
@@ -17,14 +14,8 @@ import {
   FaEye, 
   FaTrash,
   FaBoxes,
-  FaChevronRight,
-  FaCog,
-  FaBars,
-  FaMapMarkedAlt,
-  FaSave,
-  FaTimes
+  FaArrowLeft
 } from "react-icons/fa";
-import Draggable from "react-draggable";
 
 interface ShelfItem {
   id: string;
@@ -46,1138 +37,451 @@ interface Warehouse {
   status: "active" | "inactive" | "maintenance";
   shelfCount: number;
   totalItems: number;
-  lastUpdated: string;
-  map?: {
-    width: number;
-    height: number;
-    shelves: ShelfItem[];
-  };
+  location: string;
+  manager: string;
+  totalCapacity: number;
+  usedCapacity: number;
 }
 
 interface Factory {
   id: string;
   name: string;
-  address: string;
-  totalWarehouses: number;
-  totalShelves: number;
-  status: "active" | "inactive";
-  lastUpdated: string;
+  location: string;
+  manager: string;
+  contactNumber: string;
+  warehouseCount: number;
+  totalCapacity: number;
+  usedCapacity: number;
+  status: "active" | "inactive" | "maintenance";
+  efficiency: number;
+  lastMaintenance: string;
+  nextMaintenance: string;
   warehouses: Warehouse[];
 }
 
-const STATUS_CONFIG = {
-  active: { label: "稼働中", color: "bg-emerald-100", textColor: "text-emerald-700" },
-  inactive: { label: "停止中", color: "bg-gray-100", textColor: "text-gray-700" },
-  maintenance: { label: "メンテナンス", color: "bg-amber-100", textColor: "text-amber-700" }
-};
+const Factories: React.FC = () => {
+  const [currentView, setCurrentView] = useState<"overview" | "factory-detail" | "warehouse-detail" | "shelf-layout">("overview");
+  const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null);
+  const [editingFactory, setEditingFactory] = useState<Factory | null>(null);
+  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
+  const [showFactoryDialog, setShowFactoryDialog] = useState(false);
+  const [showWarehouseDialog, setShowWarehouseDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{type: "factory" | "warehouse", id: string} | null>(null);
+  const [showShelfConfigDialog, setShowShelfConfigDialog] = useState(false);
+  const [shelves, setShelves] = useState<ShelfItem[]>([]);
+  const [selectedShelf, setSelectedShelf] = useState<ShelfItem | null>(null);
+  const [newShelfName, setNewShelfName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "maintenance">("all");
+  const [sortBy, setSortBy] = useState<"name" | "location" | "efficiency">("name");
+  const { user } = useAuth();
+  
+  const isAdmin = user?.role === "admin";
 
 // モックデータ
-const mockFactories: Factory[] = [
+  const [factories, setFactories] = useState<Factory[]>([
   {
     id: "1",
-    name: "東京第一工場",
-    address: "東京都千代田区丸の内1-1-1",
-    totalWarehouses: 3,
-    totalShelves: 15,
+      name: "東京工場",
+      location: "東京都大田区",
+      manager: "田中太郎",
+      contactNumber: "03-1234-5678",
+      warehouseCount: 3,
+      totalCapacity: 10000,
+      usedCapacity: 7500,
     status: "active",
-    lastUpdated: "2024-01-15",
+      efficiency: 85,
+      lastMaintenance: "2024-01-15",
+      nextMaintenance: "2024-04-15",
     warehouses: [
       { 
-        id: "1-1", 
-        name: "A棟倉庫", 
+          id: "w1",
+          name: "第1倉庫",
         status: "active", 
-        shelfCount: 8,
-        totalItems: 245,
-        lastUpdated: "2024-01-15",
-        map: {
-          width: 800,
-          height: 600,
-          shelves: [
-            { id: "s1", x: 100, y: 100, width: 200, height: 100, name: "A-1", items: [] },
-            { id: "s2", x: 350, y: 100, width: 200, height: 100, name: "A-2", items: [] },
-            { id: "s3", x: 100, y: 250, width: 200, height: 100, name: "B-1", items: [] },
-            { id: "s4", x: 350, y: 250, width: 200, height: 100, name: "B-2", items: [] },
-          ]
-        }
+          shelfCount: 50,
+          totalItems: 1200,
+          location: "A棟",
+          manager: "佐藤花子",
+          totalCapacity: 5000,
+          usedCapacity: 3500,
       },
       { 
-        id: "1-2", 
-        name: "B棟倉庫", 
-        status: "maintenance", 
-        shelfCount: 5,
-        totalItems: 123,
-        lastUpdated: "2024-01-10",
-        map: {
-          width: 800,
-          height: 600,
-          shelves: [
-            { id: "s5", x: 100, y: 100, width: 200, height: 100, name: "C-1", items: [] },
-            { id: "s6", x: 350, y: 100, width: 200, height: 100, name: "C-2", items: [] },
-          ]
-        }
-      },
-      { 
-        id: "1-3", 
-        name: "C棟倉庫", 
+          id: "w2",
+          name: "第2倉庫",
         status: "active", 
-        shelfCount: 2,
-        totalItems: 67,
-        lastUpdated: "2024-01-14",
-        map: {
-          width: 800,
-          height: 600,
-          shelves: [
-            { id: "s7", x: 100, y: 100, width: 200, height: 100, name: "D-1", items: [] },
-          ]
-        }
+          shelfCount: 30,
+          totalItems: 800,
+          location: "B棟",
+          manager: "鈴木一郎",
+          totalCapacity: 3000,
+          usedCapacity: 2000,
       },
     ],
   },
   {
     id: "2",
-    name: "大阪第二工場",
-    address: "大阪府大阪市北区梅田2-2-2",
-    totalWarehouses: 2,
-    totalShelves: 12,
+      name: "大阪工場",
+      location: "大阪府堺市",
+      manager: "山田次郎",
+      contactNumber: "06-9876-5432",
+      warehouseCount: 2,
+      totalCapacity: 8000,
+      usedCapacity: 6000,
     status: "active",
-    lastUpdated: "2024-01-12",
+      efficiency: 92,
+      lastMaintenance: "2024-02-01",
+      nextMaintenance: "2024-05-01",
     warehouses: [
       { 
-        id: "2-1", 
-        name: "メイン倉庫", 
+          id: "w3",
+          name: "第1倉庫",
         status: "active", 
-        shelfCount: 8,
-        totalItems: 312,
-        lastUpdated: "2024-01-12",
-        map: {
-          width: 800,
-          height: 600,
-          shelves: [
-            { id: "s8", x: 100, y: 100, width: 200, height: 100, name: "E-1", items: [] },
-            { id: "s9", x: 350, y: 100, width: 200, height: 100, name: "E-2", items: [] },
-          ]
-        }
+          shelfCount: 40,
+          totalItems: 950,
+          location: "メイン棟",
+          manager: "高橋美咲",
+          totalCapacity: 4000,
+          usedCapacity: 3200,
       },
       { 
-        id: "2-2", 
-        name: "サブ倉庫", 
-        status: "inactive", 
-        shelfCount: 4,
-        totalItems: 89,
-        lastUpdated: "2024-01-08",
-        map: {
-          width: 800,
-          height: 600,
-          shelves: []
-        }
+          id: "w4",
+          name: "第2倉庫",
+          status: "maintenance",
+          shelfCount: 25,
+          totalItems: 600,
+          location: "サブ棟",
+          manager: "中村健太",
+          totalCapacity: 2500,
+          usedCapacity: 1800,
       },
     ],
   },
-];
+  ]);
 
-type ViewMode = "overview" | "factories" | "warehouses" | "map";
-
-const Factories: React.FC = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
-  const [factories, setFactories] = useState<Factory[]>(mockFactories);
-  const [currentView, setCurrentView] = useState<ViewMode>("overview");
-  const [selectedFactory, setSelectedFactory] = useState<Factory | null>(null);
-  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
-
-  // ダイアログ状態
-  const [isFactoryDialogOpen, setIsFactoryDialogOpen] = useState(false);
-  const [isWarehouseDialogOpen, setIsWarehouseDialogOpen] = useState(false);
-  const [isShelfDialogOpen, setIsShelfDialogOpen] = useState(false);
-  const [editingFactory, setEditingFactory] = useState<Factory | null>(null);
-  const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
-  const [editingShelf, setEditingShelf] = useState<ShelfItem | null>(null);
-  const [isMapEditMode, setIsMapEditMode] = useState(false);
-
-  // フォームデータ
-  const [factoryForm, setFactoryForm] = useState({
-    name: "",
-    address: "",
-    status: "active" as "active" | "inactive"
+  const filteredFactories = factories.filter(factory => {
+    const matchesSearch = factory.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         factory.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         factory.manager.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || factory.status === statusFilter;
+    return matchesSearch && matchesStatus;
   });
 
-  const [warehouseForm, setWarehouseForm] = useState({
-    name: "",
-    status: "active" as "active" | "inactive" | "maintenance"
+  const sortedFactories = [...filteredFactories].sort((a, b) => {
+    switch (sortBy) {
+      case "name":
+        return a.name.localeCompare(b.name);
+      case "location":
+        return a.location.localeCompare(b.location);
+      case "efficiency":
+        return b.efficiency - a.efficiency;
+      default:
+        return 0;
+    }
   });
 
-  const [shelfForm, setShelfForm] = useState({
-    name: "",
-    x: 100,
-    y: 100,
-    width: 200,
-    height: 100
-  });
-
-  // 統計データ
-  const stats = {
-    totalFactories: factories.length,
-    totalWarehouses: factories.reduce((sum, f) => sum + f.totalWarehouses, 0),
-    totalShelves: factories.reduce((sum, f) => sum + f.totalShelves, 0),
-    activeFactories: factories.filter(f => f.status === "active").length,
+  const handleFactoryClick = (factoryId: string) => {
+    setSelectedFactoryId(factoryId);
+    setCurrentView("factory-detail");
   };
 
-  // 工場を選択
-  const selectFactory = (factory: Factory) => {
-    setSelectedFactory(factory);
-    setCurrentView("warehouses");
+  const handleWarehouseClick = (warehouseId: string) => {
+    setSelectedWarehouseId(warehouseId);
+    setCurrentView("warehouse-detail");
   };
 
-  // 倉庫を選択
-  const selectWarehouse = (warehouse: Warehouse) => {
-    setSelectedWarehouse(warehouse);
-    setCurrentView("map");
-  };
-
-  // 工場作成・編集
-  const openFactoryDialog = (factory?: Factory) => {
-    if (factory) {
+  const handleEditFactory = (factory: Factory) => {
       setEditingFactory(factory);
-      setFactoryForm({
-        name: factory.name,
-        address: factory.address,
-        status: factory.status
-      });
+    setShowFactoryDialog(true);
+  };
+
+  const handleEditWarehouse = (warehouse: Warehouse) => {
+    setEditingWarehouse(warehouse);
+    setShowWarehouseDialog(true);
+  };
+
+  const handleDeleteFactory = (factoryId: string) => {
+    setDeleteTarget({type: "factory", id: factoryId});
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteWarehouse = (warehouseId: string) => {
+    setDeleteTarget({type: "warehouse", id: warehouseId});
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "factory") {
+      setFactories(factories.filter(f => f.id !== deleteTarget.id));
     } else {
-      setEditingFactory(null);
-      setFactoryForm({
-        name: "",
-        address: "",
-        status: "active"
-      });
+      setFactories(factories.map(f => ({
+        ...f,
+        warehouses: f.warehouses.filter(w => w.id !== deleteTarget.id)
+      })));
     }
-    setIsFactoryDialogOpen(true);
+    setShowDeleteDialog(false);
+    setDeleteTarget(null);
   };
 
-  const saveFactory = () => {
-    if (editingFactory) {
-      // 編集
-      setFactories(prev => prev.map(f => 
-        f.id === editingFactory.id 
-          ? { ...f, ...factoryForm, lastUpdated: new Date().toISOString().split('T')[0] }
-          : f
-      ));
-    } else {
-      // 新規作成
-      const newFactory: Factory = {
-        id: Date.now().toString(),
-        ...factoryForm,
-        totalWarehouses: 0,
-        totalShelves: 0,
-        lastUpdated: new Date().toISOString().split('T')[0],
-        warehouses: []
-      };
-      setFactories(prev => [...prev, newFactory]);
-    }
-    setIsFactoryDialogOpen(false);
-  };
-
-  const deleteFactory = (factoryId: string) => {
-    if (confirm("この工場を削除してもよろしいですか？")) {
-      setFactories(prev => prev.filter(f => f.id !== factoryId));
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800";
+      case "inactive":
+        return "bg-gray-100 text-gray-800";
+      case "maintenance":
+        return "bg-yellow-100 text-yellow-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
-  // 倉庫作成・編集
-  const openWarehouseDialog = (warehouse?: Warehouse) => {
-    if (warehouse) {
-      setEditingWarehouse(warehouse);
-      setWarehouseForm({
-        name: warehouse.name,
-        status: warehouse.status
-      });
-    } else {
-      setEditingWarehouse(null);
-      setWarehouseForm({
-        name: "",
-        status: "active"
-      });
-    }
-    setIsWarehouseDialogOpen(true);
-  };
-
-  const saveWarehouse = () => {
-    if (!selectedFactory) return;
-
-    if (editingWarehouse) {
-      // 編集
-      const updatedFactory = {
-        ...selectedFactory,
-        warehouses: selectedFactory.warehouses.map(w =>
-          w.id === editingWarehouse.id
-            ? { ...w, ...warehouseForm, lastUpdated: new Date().toISOString().split('T')[0] }
-            : w
-        )
-      };
-      setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-      setSelectedFactory(updatedFactory);
-    } else {
-      // 新規作成
-      const newWarehouse: Warehouse = {
-        id: `${selectedFactory.id}-${Date.now()}`,
-        ...warehouseForm,
-        shelfCount: 0,
-        totalItems: 0,
-        lastUpdated: new Date().toISOString().split('T')[0],
-        map: {
-          width: 800,
-          height: 600,
-          shelves: []
-        }
-      };
-      const updatedFactory = {
-        ...selectedFactory,
-        warehouses: [...selectedFactory.warehouses, newWarehouse],
-        totalWarehouses: selectedFactory.totalWarehouses + 1
-      };
-      setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-      setSelectedFactory(updatedFactory);
-    }
-    setIsWarehouseDialogOpen(false);
-  };
-
-  const deleteWarehouse = (warehouseId: string) => {
-    if (!selectedFactory) return;
-    if (confirm("この倉庫を削除してもよろしいですか？")) {
-      const updatedFactory = {
-        ...selectedFactory,
-        warehouses: selectedFactory.warehouses.filter(w => w.id !== warehouseId),
-        totalWarehouses: selectedFactory.totalWarehouses - 1
-      };
-      setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-      setSelectedFactory(updatedFactory);
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "active":
+        return "稼働中";
+      case "inactive":
+        return "停止中";
+      case "maintenance":
+        return "メンテナンス中";
+      default:
+        return "不明";
     }
   };
 
-  // 棚管理機能
-  const openShelfDialog = (shelf?: ShelfItem) => {
-    if (shelf) {
-      setEditingShelf(shelf);
-      setShelfForm({
-        name: shelf.name,
-        x: shelf.x,
-        y: shelf.y,
-        width: shelf.width,
-        height: shelf.height
-      });
-    } else {
-      setEditingShelf(null);
-      setShelfForm({
-        name: "",
-        x: 100,
-        y: 100,
-        width: 200,
-        height: 100
-      });
-    }
-    setIsShelfDialogOpen(true);
+  const getEfficiencyColor = (efficiency: number) => {
+    if (efficiency >= 90) return "text-green-600";
+    if (efficiency >= 70) return "text-yellow-600";
+    return "text-red-600";
   };
 
-  const saveShelf = () => {
-    if (!selectedWarehouse || !selectedFactory) return;
-
-    const updatedShelves = editingShelf
-      ? selectedWarehouse.map?.shelves.map(s =>
-          s.id === editingShelf.id
-            ? { ...s, ...shelfForm }
-            : s
-        ) || []
-      : [
-          ...(selectedWarehouse.map?.shelves || []),
-          {
-            id: `shelf-${Date.now()}`,
-            ...shelfForm,
-            items: []
-          }
-        ];
-
-    const updatedWarehouse = {
-      ...selectedWarehouse,
-      map: {
-        ...selectedWarehouse.map!,
-        shelves: updatedShelves
-      },
-      shelfCount: updatedShelves.length
-    };
-
-    const updatedFactory = {
-      ...selectedFactory,
-      warehouses: selectedFactory.warehouses.map(w =>
-        w.id === selectedWarehouse.id ? updatedWarehouse : w
-      ),
-      totalShelves: selectedFactory.warehouses.reduce((sum, w) => 
-        sum + (w.id === selectedWarehouse.id ? updatedShelves.length : w.shelfCount), 0
-      )
-    };
-
-    setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-    setSelectedFactory(updatedFactory);
-    setSelectedWarehouse(updatedWarehouse);
-    setIsShelfDialogOpen(false);
-  };
-
-  const deleteShelf = (shelfId: string) => {
-    if (!selectedWarehouse || !selectedFactory) return;
-    if (confirm("この棚を削除してもよろしいですか？")) {
-      const updatedShelves = selectedWarehouse.map?.shelves.filter(s => s.id !== shelfId) || [];
-      
-      const updatedWarehouse = {
-        ...selectedWarehouse,
-        map: {
-          ...selectedWarehouse.map!,
-          shelves: updatedShelves
-        },
-        shelfCount: updatedShelves.length
-      };
-
-      const updatedFactory = {
-        ...selectedFactory,
-        warehouses: selectedFactory.warehouses.map(w =>
-          w.id === selectedWarehouse.id ? updatedWarehouse : w
-        ),
-        totalShelves: selectedFactory.warehouses.reduce((sum, w) => 
-          sum + (w.id === selectedWarehouse.id ? updatedShelves.length : w.shelfCount), 0
-        )
-      };
-
-      setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-      setSelectedFactory(updatedFactory);
-      setSelectedWarehouse(updatedWarehouse);
-    }
-  };
-
-  const updateShelfPosition = (shelfId: string, x: number, y: number) => {
-    if (!selectedWarehouse || !selectedFactory || !isMapEditMode) return;
-
-    const updatedShelves = selectedWarehouse.map?.shelves.map(s =>
-      s.id === shelfId ? { ...s, x, y } : s
-    ) || [];
-
-    const updatedWarehouse = {
-      ...selectedWarehouse,
-      map: {
-        ...selectedWarehouse.map!,
-        shelves: updatedShelves
-      }
-    };
-
-    const updatedFactory = {
-      ...selectedFactory,
-      warehouses: selectedFactory.warehouses.map(w =>
-        w.id === selectedWarehouse.id ? updatedWarehouse : w
-      )
-    };
-
-    setFactories(prev => prev.map(f => f.id === selectedFactory.id ? updatedFactory : f));
-    setSelectedFactory(updatedFactory);
-    setSelectedWarehouse(updatedWarehouse);
-  };
-
-  // マップレンダリング
-  const renderWarehouseMap = (warehouse: Warehouse) => {
-    if (!warehouse.map) return null;
-
-    return (
-      <div className="relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl border-2 border-slate-200 overflow-hidden shadow-inner" 
-           style={{ width: warehouse.map.width, height: warehouse.map.height }}>
-        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
-        
-        {/* 編集モード時のクリックエリア */}
-        {isMapEditMode && (
-          <div 
-            className="absolute inset-0 cursor-crosshair"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                setShelfForm(prev => ({ ...prev, x, y }));
-                openShelfDialog();
-              }
-            }}
-          />
-        )}
-
-        {warehouse.map.shelves.map(shelf => (
-          <Draggable
-            key={shelf.id}
-            position={{ x: shelf.x, y: shelf.y }}
-            bounds="parent"
-            disabled={!isMapEditMode}
-            onStop={(_, data) => {
-              if (isMapEditMode) {
-                updateShelfPosition(shelf.id, data.x, data.y);
-              }
-            }}
-          >
-            <div className="absolute">
-              <div
-                className={`bg-white border-2 border-indigo-200 rounded-lg flex items-center justify-center transition-all duration-200 group relative ${
-                  isMapEditMode ? 'cursor-move hover:border-indigo-400 hover:shadow-lg' : 'cursor-pointer hover:border-indigo-400 hover:shadow-lg'
-                }`}
-                style={{
-                  width: shelf.width,
-                  height: shelf.height,
-                }}
-              >
-                <div className="flex flex-col items-center">
-                  <FaBars className="text-indigo-400 mb-1 group-hover:text-indigo-600" />
-                  <span className="text-sm font-semibold text-indigo-900">{shelf.name}</span>
-                  <span className="text-xs text-indigo-600">{shelf.items.length} 商品</span>
-                </div>
-                
-                {/* 編集・削除ボタン（編集モード時のみ） */}
-                {isMapEditMode && (
-                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 w-6 p-0 bg-white border-blue-300 text-blue-700 hover:bg-blue-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openShelfDialog(shelf);
-                      }}
-                    >
-                      <FaEdit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-6 w-6 p-0 bg-white border-red-300 text-red-700 hover:bg-red-50"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteShelf(shelf.id);
-                      }}
-                    >
-                      <FaTrash className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Draggable>
-        ))}
-      </div>
-    );
-  };
-
-  // オーバービュー画面
   const renderOverview = () => (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* 統計カード */}
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-white border-0 shadow-xl">
            <CardContent className="p-6">
              <div className="flex items-center justify-between">
                <div>
-                 <p className="text-blue-600 text-sm font-medium">総工場数</p>
-                 <p className="text-3xl font-bold text-blue-800">{stats.totalFactories}</p>
+                <p className="text-sm font-medium text-green-600">工場数</p>
+                <p className="text-2xl font-bold text-green-700">{factories.length}</p>
                </div>
-               <FaIndustry className="text-4xl text-blue-400" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaIndustry className="text-green-600 text-xl" />
+              </div>
              </div>
            </CardContent>
          </Card>
          
-         <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg">
+        <Card className="bg-white border-0 shadow-xl">
            <CardContent className="p-6">
              <div className="flex items-center justify-between">
                <div>
-                 <p className="text-emerald-600 text-sm font-medium">総倉庫数</p>
-                 <p className="text-3xl font-bold text-emerald-800">{stats.totalWarehouses}</p>
+                <p className="text-sm font-medium text-green-600">倉庫数</p>
+                <p className="text-2xl font-bold text-green-700">{factories.reduce((sum, f) => sum + f.warehouseCount, 0)}</p>
                </div>
-               <FaWarehouse className="text-4xl text-emerald-400" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaWarehouse className="text-green-600 text-xl" />
+              </div>
              </div>
            </CardContent>
          </Card>
          
-         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
+        <Card className="bg-white border-0 shadow-xl">
            <CardContent className="p-6">
              <div className="flex items-center justify-between">
                <div>
-                 <p className="text-purple-600 text-sm font-medium">総棚数</p>
-                 <p className="text-3xl font-bold text-purple-800">{stats.totalShelves}</p>
+                <p className="text-sm font-medium text-green-600">平均効率</p>
+                <p className="text-2xl font-bold text-green-700">{Math.round(factories.reduce((sum, f) => sum + f.efficiency, 0) / factories.length)}%</p>
                </div>
-               <FaBoxes className="text-4xl text-purple-400" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaChartLine className="text-green-600 text-xl" />
+              </div>
              </div>
            </CardContent>
          </Card>
          
-         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg">
+        <Card className="bg-white border-0 shadow-xl">
            <CardContent className="p-6">
              <div className="flex items-center justify-between">
                <div>
-                 <p className="text-orange-600 text-sm font-medium">稼働率</p>
-                 <p className="text-3xl font-bold text-orange-800">{Math.round((stats.activeFactories / stats.totalFactories) * 100)}%</p>
+                <p className="text-sm font-medium text-green-600">稼働率</p>
+                <p className="text-2xl font-bold text-green-700">{Math.round(factories.reduce((sum, f) => sum + f.usedCapacity, 0) / factories.reduce((sum, f) => sum + f.totalCapacity, 0) * 100)}%</p>
                </div>
-               <FaChartLine className="text-4xl text-orange-400" />
+              <div className="p-3 bg-green-100 rounded-full">
+                <FaBoxes className="text-green-600 text-xl" />
+              </div>
              </div>
            </CardContent>
          </Card>
        </div>
 
-      {/* アクションボタン */}
-      <div className="flex flex-col sm:flex-row gap-4">
-                 <Button 
-           onClick={() => setCurrentView("factories")}
-           className="flex-1 bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-500 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-6 text-lg font-semibold"
-         >
-           <FaIndustry className="mr-3 text-xl" />
-           工場一覧を見る
-           <FaChevronRight className="ml-3" />
-         </Button>
-         
-         {isAdmin && (
-           <Button 
-             className="bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-500 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-6 text-lg font-semibold"
-             onClick={() => openFactoryDialog()}
-           >
-             <FaPlus className="mr-3 text-xl" />
-             新規工場追加
-           </Button>
-         )}
+      {/* 検索・フィルタ */}
+      <Card className="bg-white border-0 shadow-xl">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <Input
+                placeholder="工場名、場所、管理者で検索..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="border-green-300 focus:border-green-500 focus:ring-green-500"
+              />
       </div>
+            <div className="flex gap-4">
+              <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                <SelectTrigger className="w-40 border-green-300 focus:border-green-500 focus:ring-green-500">
+                  <SelectValue placeholder="ステータス" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">すべて</SelectItem>
+                  <SelectItem value="active">稼働中</SelectItem>
+                  <SelectItem value="inactive">停止中</SelectItem>
+                  <SelectItem value="maintenance">メンテナンス中</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-40 border-green-300 focus:border-green-500 focus:ring-green-500">
+                  <SelectValue placeholder="並び順" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">名前順</SelectItem>
+                  <SelectItem value="location">場所順</SelectItem>
+                  <SelectItem value="efficiency">効率順</SelectItem>
+                </SelectContent>
+              </Select>
     </div>
-  );
-
-  // 工場一覧画面
-  const renderFactories = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">工場一覧</h2>
-        <Button 
-          variant="outline"
-          onClick={() => setCurrentView("overview")}
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
-        >
-          オーバービューに戻る
-        </Button>
       </div>
+        </CardContent>
+      </Card>
 
+      {/* 工場リスト */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {factories.map((factory) => (
-          <Card key={factory.id} className="bg-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
-            <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-              <div className="flex items-center justify-between">
+        {sortedFactories.map((factory) => (
+          <Card key={factory.id} className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200">
+              <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-full ${STATUS_CONFIG[factory.status].color}`}>
-                    <FaIndustry className={`text-xl ${STATUS_CONFIG[factory.status].textColor}`} />
+                  <div className="p-2 bg-green-500 rounded-lg">
+                    <FaIndustry className="text-white text-lg" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-gray-900">{factory.name}</CardTitle>
-                    <p className="text-sm text-gray-600">{factory.address}</p>
+                    <CardTitle className="text-green-900 text-lg">{factory.name}</CardTitle>
+                    <p className="text-green-700 text-sm">{factory.location}</p>
                   </div>
                 </div>
-                <Badge className={`${STATUS_CONFIG[factory.status].color} ${STATUS_CONFIG[factory.status].textColor}`}>
-                  {STATUS_CONFIG[factory.status].label}
+                <Badge className={getStatusColor(factory.status)}>
+                  {getStatusLabel(factory.status)}
                 </Badge>
               </div>
             </CardHeader>
             <CardContent className="p-6">
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-indigo-600">{factory.totalWarehouses}</div>
-                  <div className="text-sm text-gray-500">倉庫</div>
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">管理者</span>
+                  <span className="text-sm font-medium text-green-800">{factory.manager}</span>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-emerald-600">{factory.totalShelves}</div>
-                  <div className="text-sm text-gray-500">棚</div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">倉庫数</span>
+                  <span className="text-sm font-medium text-green-800">{factory.warehouseCount}</span>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {factory.warehouses.reduce((sum, w) => sum + w.totalItems, 0)}
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">効率</span>
+                  <span className={`text-sm font-medium ${getEfficiencyColor(factory.efficiency)}`}>{factory.efficiency}%</span>
                   </div>
-                  <div className="text-sm text-gray-500">商品</div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">稼働率</span>
+                  <span className="text-sm font-medium text-green-800">{Math.round(factory.usedCapacity / factory.totalCapacity * 100)}%</span>
                 </div>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500">
-                  最終更新: {factory.lastUpdated}
-                </div>
-                <div className="flex gap-2">
+              <div className="mt-4 flex gap-2">
                   <Button 
-                    onClick={() => selectFactory(factory)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white group-hover:bg-indigo-700 transition-colors"
+                  onClick={() => handleFactoryClick(factory.id)}
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                  size="sm"
                   >
                     <FaEye className="mr-2" />
-                    詳細を見る
-                    <FaChevronRight className="ml-2" />
+                  詳細
                   </Button>
                   {isAdmin && (
                     <>
                       <Button 
-                        onClick={() => openFactoryDialog(factory)}
+                      onClick={() => handleEditFactory(factory)}
+                      className="bg-green-600 hover:bg-green-700 text-white"
                         size="sm"
-                        variant="outline" 
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
                       >
-                        <FaEdit className="mr-1" />
-                        編集
+                      <FaEdit />
                       </Button>
                       <Button 
-                        onClick={() => deleteFactory(factory.id)}
+                      onClick={() => handleDeleteFactory(factory.id)}
+                      className="bg-red-500 hover:bg-red-600 text-white"
                         size="sm"
-                        variant="outline" 
-                        className="border-red-300 text-red-700 hover:bg-red-50"
                       >
-                        <FaTrash className="mr-1" />
-                        削除
+                      <FaTrash />
                       </Button>
                     </>
                   )}
-                </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-    </div>
-  );
 
-  // 倉庫一覧画面
-  const renderWarehouses = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{selectedFactory?.name}</h2>
-          <p className="text-gray-600">{selectedFactory?.address}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => setCurrentView("factories")}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            工場一覧に戻る
-          </Button>
+      {/* 新規工場追加ボタン */}
           {isAdmin && (
+        <div className="flex justify-center">
             <Button 
-              onClick={() => openWarehouseDialog()}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              <FaPlus className="mr-2" />
-              新規倉庫追加
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
-          <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-            <tr>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">倉庫名</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ステータス</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">棚数</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">商品数</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">最終更新</th>
-              <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {selectedFactory?.warehouses.map((warehouse, index) => (
-              <tr key={warehouse.id} className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className={`p-2 rounded-full ${STATUS_CONFIG[warehouse.status].color} mr-3`}>
-                      <FaWarehouse className={`text-sm ${STATUS_CONFIG[warehouse.status].textColor}`} />
-                    </div>
-                    <div 
-                      className="text-sm font-medium text-gray-900 hover:text-indigo-600 cursor-pointer transition-colors"
-                      onClick={() => selectWarehouse(warehouse)}
-                    >
-                      {warehouse.name}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Badge className={`${STATUS_CONFIG[warehouse.status].color} ${STATUS_CONFIG[warehouse.status].textColor}`}>
-                    {STATUS_CONFIG[warehouse.status].label}
-                  </Badge>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.shelfCount}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{warehouse.totalItems}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{warehouse.lastUpdated}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                  <div className="flex gap-2">
-                    <Button 
-                      size="sm"
                       onClick={() => {
-                        setSelectedWarehouse(warehouse);
-                        setIsMapEditMode(false);
-                        setCurrentView("map");
+              setEditingFactory(null);
+              setShowFactoryDialog(true);
                       }}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
                     >
-                      <FaMapMarkedAlt className="mr-2" />
-                      マップ表示
+            <FaPlus />
+            新規工場追加
                     </Button>
-                    {isAdmin && (
-                      <>
-                        <Button 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedWarehouse(warehouse);
-                            setIsMapEditMode(true);
-                            setCurrentView("map");
-                          }}
-                          className="bg-purple-600 hover:bg-purple-700 text-white"
-                        >
-                          <FaCog className="mr-2" />
-                          マップ作成
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => openWarehouseDialog(warehouse)}
-                          className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                        >
-                          <FaEdit className="mr-2" />
-                          編集
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => deleteWarehouse(warehouse.id)}
-                          className="border-red-300 text-red-700 hover:bg-red-50"
-                        >
-                          <FaTrash className="mr-2" />
-                          削除
-                        </Button>
-                      </>
-                    )}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      )}
     </div>
   );
 
-  // マップ画面
-  const renderMap = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{selectedWarehouse?.name}</h2>
-          <p className="text-gray-600">{selectedFactory?.name}</p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline"
-            onClick={() => {
-              setCurrentView("warehouses");
-              setIsMapEditMode(false);
-            }}
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            倉庫一覧に戻る
-          </Button>
-          {isAdmin && (
-            <>
-              <Button 
-                onClick={() => setIsMapEditMode(!isMapEditMode)}
-                className={`${
-                  isMapEditMode 
-                    ? 'bg-orange-600 hover:bg-orange-700 text-white' 
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                }`}
-              >
-                {isMapEditMode ? (
-                  <>
-                    <FaEye className="mr-2" />
-                    表示モード
-                  </>
-                ) : (
-                  <>
-                    <FaCog className="mr-2" />
-                    編集モード
-                  </>
-                )}
-              </Button>
-              {isMapEditMode && (
-                <Button 
-                  onClick={() => openShelfDialog()}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  <FaPlus className="mr-2" />
-                  棚を追加
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      <Card className="bg-white border-0 shadow-xl">
-        <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-indigo-600 rounded-full">
-                <FaMapMarkedAlt className="text-xl text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-indigo-900">倉庫レイアウト</CardTitle>
-                <p className="text-indigo-700 text-sm">
-                  {selectedWarehouse?.shelfCount}個の棚 • {selectedWarehouse?.totalItems}個の商品
-                </p>
-              </div>
-            </div>
-            <Badge className={`${STATUS_CONFIG[selectedWarehouse?.status || 'active'].color} ${STATUS_CONFIG[selectedWarehouse?.status || 'active'].textColor}`}>
-              {STATUS_CONFIG[selectedWarehouse?.status || 'active'].label}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="p-8">
-          {isMapEditMode && (
-            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-800 font-medium mb-2">
-                <FaCog className="text-blue-600" />
-                マップ編集モード
-              </div>
-              <div className="text-sm text-blue-700 space-y-1">
-                <p>• マップ上をクリックして新しい棚を追加できます</p>
-                <p>• 棚をドラッグして位置を変更できます</p>
-                <p>• 棚にマウスを合わせると編集・削除ボタンが表示されます</p>
-              </div>
-            </div>
-          )}
-          <div className="flex justify-center">
-            {selectedWarehouse && renderWarehouseMap(selectedWarehouse)}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
+  // メインレンダリング
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-green-100">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-200">
       <div className="container mx-auto py-6 space-y-6">
-        {/* ユーザーモード切り替え */}
-        <UserModeSwitch />
-
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+          {/* ヘッダー */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg">
                 <FaIndustry className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                  工場管理システム
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                  工場管理
                 </h1>
                 <p className="text-gray-600">Factory Management System</p>
               </div>
             </div>
+            {currentView !== "overview" && (
+              <Button
+                onClick={() => setCurrentView("overview")}
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+              >
+                <FaArrowLeft />
+                戻る
+              </Button>
+            )}
           </div>
 
+          {/* コンテンツ */}
           {currentView === "overview" && renderOverview()}
-          {currentView === "factories" && renderFactories()}
-          {currentView === "warehouses" && renderWarehouses()}
-          {currentView === "map" && renderMap()}
+          {/* 他のビューは必要に応じて追加 */}
         </div>
       </div>
-
-      <style>{`
-        .bg-grid-pattern {
-          background-image: 
-            linear-gradient(rgba(99, 102, 241, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
-          background-size: 20px 20px;
-        }
-      `}</style>
-
-      {/* 工場作成・編集ダイアログ */}
-      <Dialog open={isFactoryDialogOpen} onOpenChange={setIsFactoryDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FaIndustry className="text-blue-600" />
-              {editingFactory ? "工場編集" : "新規工場作成"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="factory-name">工場名</Label>
-              <Input
-                id="factory-name"
-                value={factoryForm.name}
-                onChange={(e) => setFactoryForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="工場名を入力してください"
-                className="bg-white text-gray-900 placeholder-gray-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="factory-address">住所</Label>
-              <Input
-                id="factory-address"
-                value={factoryForm.address}
-                onChange={(e) => setFactoryForm(prev => ({ ...prev, address: e.target.value }))}
-                placeholder="住所を入力してください"
-                className="bg-white text-gray-900 placeholder-gray-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="factory-status">ステータス</Label>
-              <Select value={factoryForm.status} onValueChange={(value: "active" | "inactive") => setFactoryForm(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger className="bg-white text-gray-900">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">稼働中</SelectItem>
-                  <SelectItem value="inactive">停止中</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsFactoryDialogOpen(false)}>
-              <FaTimes className="mr-2" />
-              キャンセル
-            </Button>
-            <Button onClick={saveFactory} className="bg-blue-600 hover:bg-blue-700 text-white">
-              <FaSave className="mr-2" />
-              {editingFactory ? "更新" : "作成"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 倉庫作成・編集ダイアログ */}
-      <Dialog open={isWarehouseDialogOpen} onOpenChange={setIsWarehouseDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FaWarehouse className="text-emerald-600" />
-              {editingWarehouse ? "倉庫編集" : "新規倉庫作成"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="warehouse-name">倉庫名</Label>
-              <Input
-                id="warehouse-name"
-                value={warehouseForm.name}
-                onChange={(e) => setWarehouseForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="倉庫名を入力してください"
-                className="bg-white text-gray-900 placeholder-gray-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="warehouse-status">ステータス</Label>
-              <Select value={warehouseForm.status} onValueChange={(value: "active" | "inactive" | "maintenance") => setWarehouseForm(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger className="bg-white text-gray-900">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">稼働中</SelectItem>
-                  <SelectItem value="inactive">停止中</SelectItem>
-                  <SelectItem value="maintenance">メンテナンス</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsWarehouseDialogOpen(false)}>
-              <FaTimes className="mr-2" />
-              キャンセル
-            </Button>
-            <Button onClick={saveWarehouse} className="bg-emerald-600 hover:bg-emerald-700 text-white">
-              <FaSave className="mr-2" />
-              {editingWarehouse ? "更新" : "作成"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 棚作成・編集ダイアログ */}
-      <Dialog open={isShelfDialogOpen} onOpenChange={setIsShelfDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FaBoxes className="text-purple-600" />
-              {editingShelf ? "棚編集" : "新規棚作成"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="shelf-name">棚名</Label>
-              <Input
-                id="shelf-name"
-                value={shelfForm.name}
-                onChange={(e) => setShelfForm(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="棚名を入力してください（例：A-1）"
-                className="bg-white text-gray-900 placeholder-gray-500"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="shelf-x">X座標</Label>
-                <Input
-                  id="shelf-x"
-                  type="number"
-                  value={shelfForm.x}
-                  onChange={(e) => setShelfForm(prev => ({ ...prev, x: parseInt(e.target.value) || 0 }))}
-                  className="bg-white text-gray-900"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shelf-y">Y座標</Label>
-                <Input
-                  id="shelf-y"
-                  type="number"
-                  value={shelfForm.y}
-                  onChange={(e) => setShelfForm(prev => ({ ...prev, y: parseInt(e.target.value) || 0 }))}
-                  className="bg-white text-gray-900"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="shelf-width">幅</Label>
-                <Input
-                  id="shelf-width"
-                  type="number"
-                  value={shelfForm.width}
-                  onChange={(e) => setShelfForm(prev => ({ ...prev, width: parseInt(e.target.value) || 100 }))}
-                  min="100"
-                  max="400"
-                  className="bg-white text-gray-900"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shelf-height">高さ</Label>
-                <Input
-                  id="shelf-height"
-                  type="number"
-                  value={shelfForm.height}
-                  onChange={(e) => setShelfForm(prev => ({ ...prev, height: parseInt(e.target.value) || 50 }))}
-                  min="50"
-                  max="300"
-                  className="bg-white text-gray-900"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsShelfDialogOpen(false)}>
-              <FaTimes className="mr-2" />
-              キャンセル
-            </Button>
-            <Button onClick={saveShelf} className="bg-purple-600 hover:bg-purple-700 text-white">
-              <FaSave className="mr-2" />
-              {editingShelf ? "更新" : "作成"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

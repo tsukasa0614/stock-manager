@@ -4,6 +4,12 @@ from . import views
 urlpatterns = [
     # 認証
     path('login/', views.LoginView.as_view(), name='login'),
+    path('admin/login/', views.AdminLoginView.as_view(), name='admin_login'),
+    path('user/login/', views.UserLoginView.as_view(), name='user_login'),
+    
+    # 工場管理者
+    path('managers/', views.ManagerListView.as_view(), name='manager_list'),
+    path('managers/<int:pk>/', views.ManagerDetailView.as_view(), name='manager_detail'),
     
     # 在庫管理
     path('inventories/', views.InventoryListView.as_view(), name='inventory_list'),

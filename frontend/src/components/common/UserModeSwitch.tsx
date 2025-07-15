@@ -1,30 +1,32 @@
-import React from "react";
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs";
-import { useAuth } from "../../hooks/useAuth";
+import { useAuth } from "../../contexts/AuthContext";
 
 export function UserModeSwitch() {
-  // 本番では削除: 開発用のユーザー切り替え機能
-  const [currentRole, setCurrentRole] = React.useState<"admin" | "user">("admin");
-  const { setUser } = useAuth();
+  const { user, logout } = useAuth();
 
-  // 本番では削除: 開発用のユーザー切り替え機能
-  React.useEffect(() => {
-    setUser({
-      id: "1",
-      name: currentRole === "admin" ? "管理者" : "一般ユーザー",
-      email: currentRole === "admin" ? "admin@example.com" : "user@example.com",
-      role: currentRole,
-    });
-  }, [currentRole, setUser]);
+  if (!user) {
+    return null; // ログインしていない場合は表示しない
+  }
 
   return (
     <div className="flex justify-center mb-6">
-      <Tabs value={currentRole} onValueChange={(value) => setCurrentRole(value as "admin" | "user")}>
-        <TabsList className="grid w-[400px] grid-cols-2">
-          <TabsTrigger value="admin">管理者モード</TabsTrigger>
-          <TabsTrigger value="user">一般ユーザーモード</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="bg-white rounded-lg shadow-md p-4 border">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="text-sm text-gray-600">
+              ログイン中: <span className="font-semibold text-gray-800">{user.id}</span>
+            </div>
+            <div className="text-xs bg-gray-100 px-2 py-1 rounded">
+              {user.role === "admin" ? "管理者" : "ユーザー"}
+            </div>
+          </div>
+          <button
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors"
+          >
+            ログアウト
+          </button>
+        </div>
+      </div>
     </div>
   );
 } 

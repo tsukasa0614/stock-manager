@@ -1,61 +1,40 @@
 import React, { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
-import { UserModeSwitch } from "../components/common/UserModeSwitch";
+import { useAuth } from "../contexts/AuthContext";
 import { 
   FaCog, 
   FaBell, 
   FaPalette, 
-  FaDatabase, 
   FaLanguage, 
-  FaDownload, 
-  FaUpload,
   FaSave,
-  FaCheck
+  FaCheck,
+  FaUser,
+  FaShieldAlt
 } from "react-icons/fa";
 
 interface SettingsState {
-  // システム設定
   language: string;
-  timezone: string;
-  dateFormat: string;
-  currency: string;
-  
-  // 通知設定
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  stockAlerts: boolean;
-  systemAlerts: boolean;
-  
-  // 表示設定
+  notifications: boolean;
   theme: string;
   itemsPerPage: number;
-  showAdvancedFeatures: boolean;
 }
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"system" | "notifications" | "appearance">("system");
   const [settings, setSettings] = useState<SettingsState>({
     language: "ja",
-    timezone: "Asia/Tokyo",
-    dateFormat: "YYYY/MM/DD",
-    currency: "JPY",
-    emailNotifications: true,
-    pushNotifications: true,
-    stockAlerts: true,
-    systemAlerts: false,
+    notifications: true,
     theme: "light",
     itemsPerPage: 20,
-    showAdvancedFeatures: false,
   });
   const [saved, setSaved] = useState(false);
+  const { user } = useAuth();
 
   const handleSettingChange = (key: keyof SettingsState, value: any) => {
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const handleSave = () => {
-    // TODO: 実際の保存処理を実装
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -72,283 +51,165 @@ const Settings: React.FC = () => {
           enabled ? 'translate-x-7' : 'translate-x-0.5'
         }`}
       />
-      {/* ON/OFF表示 */}
-      <span className={`absolute text-xs font-semibold transition-opacity duration-300 ${
-        enabled ? 'left-2 text-white opacity-100' : 'left-2 text-gray-600 opacity-0'
-      }`}>
-        ON
-      </span>
-      <span className={`absolute text-xs font-semibold transition-opacity duration-300 ${
-        !enabled ? 'right-2 text-black opacity-100' : 'right-2 text-gray-600 opacity-0'
-      }`}>
-        OFF
-      </span>
     </button>
   );
 
-  const tabs = [
-    { id: "system", label: "システム", icon: <FaCog /> },
-    { id: "notifications", label: "通知", icon: <FaBell /> },
-    { id: "appearance", label: "表示", icon: <FaPalette /> },
-  ];
-
-  const renderSystemSettings = () => (
-    <div className="space-y-6">
-      <Card className="shadow-lg bg-white border-0">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-          <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
-            <FaLanguage />
-            言語・地域設定
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">言語</label>
-              <select
-                value={settings.language}
-                onChange={(e) => handleSettingChange("language", e.target.value)}
-                className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-              >
-                <option value="ja" className="bg-white text-purple-700">日本語</option>
-                <option value="en" className="bg-white text-purple-700">English</option>
-                <option value="zh" className="bg-white text-purple-700">中文</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">タイムゾーン</label>
-              <select
-                value={settings.timezone}
-                onChange={(e) => handleSettingChange("timezone", e.target.value)}
-                className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-              >
-                <option value="Asia/Tokyo" className="bg-white text-purple-700">Asia/Tokyo (JST)</option>
-                <option value="UTC" className="bg-white text-purple-700">UTC</option>
-                <option value="America/New_York" className="bg-white text-purple-700">America/New_York (EST)</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">日付形式</label>
-              <select
-                value={settings.dateFormat}
-                onChange={(e) => handleSettingChange("dateFormat", e.target.value)}
-                className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-              >
-                <option value="YYYY/MM/DD" className="bg-white text-purple-700">YYYY/MM/DD</option>
-                <option value="MM/DD/YYYY" className="bg-white text-purple-700">MM/DD/YYYY</option>
-                <option value="DD/MM/YYYY" className="bg-white text-purple-700">DD/MM/YYYY</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-purple-700 mb-2">通貨</label>
-              <select
-                value={settings.currency}
-                onChange={(e) => handleSettingChange("currency", e.target.value)}
-                className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-              >
-                <option value="JPY" className="bg-white text-purple-700">JPY (¥)</option>
-                <option value="USD" className="bg-white text-purple-700">USD ($)</option>
-                <option value="EUR" className="bg-white text-purple-700">EUR (€)</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="shadow-lg bg-white border-0">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-          <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
-            <FaDatabase />
-            データ管理
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white flex items-center gap-2">
-              <FaDownload />
-              データエクスポート
-            </Button>
-            <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white flex items-center gap-2">
-              <FaUpload />
-              データインポート
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderNotificationSettings = () => (
-    <div className="space-y-6">
-      <Card className="shadow-lg bg-white border-0">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-          <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
-            <FaBell />
-            通知設定
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-purple-700">メール通知</h4>
-              <p className="text-sm text-purple-500">重要な更新をメールで受信</p>
-            </div>
-            <ToggleSwitch
-              enabled={settings.emailNotifications}
-              onChange={() => handleSettingChange("emailNotifications", !settings.emailNotifications)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-purple-700">プッシュ通知</h4>
-              <p className="text-sm text-purple-500">ブラウザでのプッシュ通知</p>
-            </div>
-            <ToggleSwitch
-              enabled={settings.pushNotifications}
-              onChange={() => handleSettingChange("pushNotifications", !settings.pushNotifications)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-purple-700">在庫アラート</h4>
-              <p className="text-sm text-purple-500">在庫不足時の通知</p>
-            </div>
-            <ToggleSwitch
-              enabled={settings.stockAlerts}
-              onChange={() => handleSettingChange("stockAlerts", !settings.stockAlerts)}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-purple-700">システムアラート</h4>
-              <p className="text-sm text-purple-500">システムメンテナンス等の通知</p>
-            </div>
-            <ToggleSwitch
-              enabled={settings.systemAlerts}
-              onChange={() => handleSettingChange("systemAlerts", !settings.systemAlerts)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderAppearanceSettings = () => (
-    <div className="space-y-6">
-      <Card className="shadow-lg bg-white border-0">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-          <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
-            <FaPalette />
-            表示設定
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-purple-700 mb-2">テーマ</label>
-            <select
-              value={settings.theme}
-              onChange={(e) => handleSettingChange("theme", e.target.value)}
-              className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-            >
-              <option value="light" className="bg-white text-purple-700">ライト</option>
-              <option value="dark" className="bg-white text-purple-700">ダーク</option>
-              <option value="auto" className="bg-white text-purple-700">自動</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-purple-700 mb-2">1ページあたりの表示件数</label>
-            <select
-              value={settings.itemsPerPage}
-              onChange={(e) => handleSettingChange("itemsPerPage", parseInt(e.target.value))}
-              className="w-full px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-purple-700 bg-white"
-            >
-              <option value={10} className="bg-white text-purple-700">10件</option>
-              <option value={20} className="bg-white text-purple-700">20件</option>
-              <option value={50} className="bg-white text-purple-700">50件</option>
-              <option value={100} className="bg-white text-purple-700">100件</option>
-            </select>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-medium text-purple-700">高度な機能を表示</h4>
-              <p className="text-sm text-purple-500">上級者向けの機能を表示</p>
-            </div>
-            <ToggleSwitch
-              enabled={settings.showAdvancedFeatures}
-              onChange={() => handleSettingChange("showAdvancedFeatures", !settings.showAdvancedFeatures)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "system":
-        return renderSystemSettings();
-      case "notifications":
-        return renderNotificationSettings();
-      case "appearance":
-        return renderAppearanceSettings();
-      default:
-        return renderSystemSettings();
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-indigo-50 to-purple-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-purple-100 to-purple-200">
       <div className="container mx-auto py-6 space-y-6">
-        {/* 本番では削除: 開発用のユーザー切り替え機能 */}
-        <UserModeSwitch />
-
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg">
                 <FaCog className="text-2xl text-white" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
                   設定
                 </h1>
-                <p className="text-purple-600">System Settings</p>
+                <p className="text-gray-600">Settings</p>
               </div>
             </div>
             <Button
               onClick={handleSave}
-              className={`px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
-                saved 
-                  ? 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700' 
-                  : 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700'
-              } text-white`}
+              className={`bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2 ${
+                saved ? 'bg-green-500 hover:bg-green-600' : ''
+              }`}
             >
               {saved ? <FaCheck /> : <FaSave />}
-              {saved ? '保存完了' : '設定を保存'}
+              {saved ? '保存しました' : '設定を保存'}
             </Button>
           </div>
 
-          {/* タブナビゲーション */}
-          <div className="flex flex-wrap gap-2 mb-8 p-2 bg-purple-50 rounded-xl">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all duration-300 ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg'
-                    : 'text-white hover:bg-purple-100 hover:text-purple-700'
-                }`}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {/* ユーザー情報 */}
+          <Card className="mb-8 shadow-lg bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
+              <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
+                <FaUser />
+                ユーザー情報
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
+                  {user?.id?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <p className="text-xl font-semibold text-gray-800">{user?.id || 'ユーザー'}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    {user?.role === 'admin' ? (
+                      <FaShieldAlt className="text-red-500" />
+                    ) : (
+                      <FaUser className="text-blue-500" />
+                    )}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      user?.role === 'admin' 
+                        ? 'bg-red-100 text-red-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {user?.role === 'admin' ? '管理者' : '現場担当者'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* タブコンテンツ */}
-          {renderTabContent()}
+          {/* 基本設定 */}
+          <Card className="shadow-lg bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
+              <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
+                <FaCog />
+                基本設定
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-6">
+                {/* 言語設定 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FaLanguage className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">言語</p>
+                      <p className="text-sm text-gray-600">表示言語を選択</p>
+                    </div>
+                  </div>
+                  <select
+                    value={settings.language}
+                    onChange={(e) => handleSettingChange('language', e.target.value)}
+                    className="px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                  >
+                    <option value="ja">日本語</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+
+                {/* 通知設定 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FaBell className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">通知</p>
+                      <p className="text-sm text-gray-600">システム通知を有効化</p>
+                    </div>
+                  </div>
+                  <ToggleSwitch
+                    enabled={settings.notifications}
+                    onChange={() => handleSettingChange('notifications', !settings.notifications)}
+                  />
+                </div>
+
+                {/* テーマ設定 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FaPalette className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">テーマ</p>
+                      <p className="text-sm text-gray-600">表示テーマを選択</p>
+                    </div>
+                  </div>
+                  <select
+                    value={settings.theme}
+                    onChange={(e) => handleSettingChange('theme', e.target.value)}
+                    className="px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                  >
+                    <option value="light">ライト</option>
+                    <option value="dark">ダーク</option>
+                  </select>
+                </div>
+
+                {/* 表示件数設定 */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <FaCog className="text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-800">表示件数</p>
+                      <p className="text-sm text-gray-600">1ページあたりの表示数</p>
+                    </div>
+                  </div>
+                  <select
+                    value={settings.itemsPerPage}
+                    onChange={(e) => handleSettingChange('itemsPerPage', parseInt(e.target.value))}
+                    className="px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                  >
+                    <option value={10}>10件</option>
+                    <option value={20}>20件</option>
+                    <option value={50}>50件</option>
+                    <option value={100}>100件</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

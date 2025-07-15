@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch } from "react-icons/fa";
+import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch, FaExclamationTriangle } from "react-icons/fa";
 import { apiClient, type InventoryItem, type Factory } from "../api/client";
+import { useAuth } from "../contexts/AuthContext";
 
 const tabs = [
   { key: "add", label: "在庫登録", icon: <FaPlus />, color: "from-blue-500 to-blue-600" },
@@ -24,7 +25,56 @@ const InventoryRegister: React.FC = () => {
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  // デバッグ: ユーザー情報をログ出力
+  console.log('InventoryRegister - User Info:', user);
+  console.log('InventoryRegister - User Role:', user?.role);
+  console.log('InventoryRegister - Is Admin Check:', user?.role === "admin");
+
+  // 管理者権限チェック
+  const isAdmin = user?.role === "admin";
+
+  // 管理者権限がない場合のアクセス制御
+  if (!isAdmin) {
+    console.log('InventoryRegister - Access Denied. User:', user, 'IsAdmin:', isAdmin);
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <FaExclamationTriangle className="text-5xl text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">アクセス権限がありません</h2>
+            <p className="text-gray-600 mb-6">
+              この機能は管理者のみが利用できます。<br />
+              現在のアカウント: {user?.id} (役割: {user?.role || '未設定'})
+              <br />
+              <small className="text-xs text-gray-400">
+                Debug: isAdmin={String(isAdmin)}, user.role={user?.role}
+              </small>
+            </p>
+            <div className="space-y-3">
+              <Button
+                onClick={() => navigate("/inventory")}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                <FaArrowLeft className="mr-2" />
+                在庫管理画面に戻る
+              </Button>
+              <Button
+                onClick={() => navigate("/home")}
+                className="w-full bg-gray-500 hover:bg-gray-600 text-white"
+              >
+                ホーム画面に戻る
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  console.log('InventoryRegister - Access Granted. User is Admin.');
 
   // フォーム状態
   const [formData, setFormData] = useState({
@@ -138,7 +188,16 @@ const InventoryRegister: React.FC = () => {
       
       if (tab === "add") {
         // 新規作成：画像ファイルの有無に応じて適切なメソッドを使用
-        response = await apiClient.createInventoryWithImage(data, imageFile);
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            formData.append(key, value.toString());
+          }
+        });
+        if (imageFile) {
+          formData.append('image', imageFile);
+        }
+        response = await apiClient.createInventory(formData);
         if (response.data) {
           alert("✅ 商品を登録しました！");
           resetForm();
@@ -151,7 +210,16 @@ const InventoryRegister: React.FC = () => {
         }
       } else if (tab === "edit" && selectedProduct) {
         // 更新：画像ファイルの有無に応じて適切なメソッドを使用
-        response = await apiClient.updateInventoryWithImage(selectedProduct.item_code, data, imageFile);
+        const formData = new FormData();
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            formData.append(key, value.toString());
+          }
+        });
+        if (imageFile) {
+          formData.append('image', imageFile);
+        }
+        response = await apiClient.updateInventory(selectedProduct.item_code, formData);
         if (response.data) {
           alert("✅ 商品を更新しました！");
           resetForm();
@@ -179,12 +247,12 @@ const InventoryRegister: React.FC = () => {
       setLoading(true);
       const response = await apiClient.deleteInventory(inventory.item_code);
       
-          if (response.status === 204) {
-      alert(`✅ ${inventory.product_name} を削除しました`);
-      loadInitialData(); // データを再読み込み
-      setTimeout(() => {
-        navigate("/inventory"); // 在庫管理画面に戻る
-      }, 1000);
+      if (!response.error) {
+        alert(`✅ ${inventory.product_name} を削除しました`);
+        loadInitialData(); // データを再読み込み
+        setTimeout(() => {
+          navigate("/inventory"); // 在庫管理画面に戻る
+        }, 1000);
     } else {
       alert(`❌ 削除に失敗しました: ${response.error}`);
     }

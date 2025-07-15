@@ -1,4 +1,90 @@
-#command
+# 在庫管理システム (Inventory Management System)
+
+本格的なDjango + React製在庫管理システムです。
+
+## 🏗️ システム構成
+
+- **バックエンド**: Django + Django REST Framework
+- **フロントエンド**: React + TypeScript + Vite + Tailwind CSS
+- **データベース**: SQLite (開発用)
+- **認証**: Token認証
+
+## 🚀 セットアップ方法
+
+### バックエンドの起動
+
+```bash
+cd backend
+python manage.py runserver
+```
+
+### フロントエンドの起動
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## 🔐 テストアカウント
+
+システムには以下のテストアカウントが用意されています：
+
+### 管理者アカウント
+- **ユーザーID**: `test_admin`
+- **パスワード**: `test123`
+- **権限**: 全工場の主任管理者
+- **利用可能機能**:
+  - 商品の登録・編集・削除
+  - 在庫管理全般
+  - 工場管理者の管理
+  - システム設定
+  - 全レポート閲覧
+
+### 一般ユーザーアカウント
+- **ユーザーID**: `test_user`
+- **パスワード**: `test123`
+- **権限**: 東京第一工場の副管理者
+- **利用可能機能**:
+  - 入出庫処理
+  - 在庫確認・検索
+  - 棚卸し作業
+  - 基本レポート閲覧
+
+## 📱 使用方法
+
+### 1. ログイン
+1. ブラウザで `http://localhost:5174/` にアクセス
+2. ログイン画面で「管理者」または「ユーザー」を選択
+3. 上記のテストアカウントでログイン
+
+### 2. 主な機能
+- **在庫管理**: 商品の登録・編集・削除・検索
+- **入出庫処理**: 商品の入荷・出荷記録
+- **棚卸し**: 理論在庫と実在庫の確認・調整
+- **工場管理**: 工場情報と管理者の設定
+- **レポート**: 在庫状況・移動履歴の確認
+
+## 🔧 開発情報
+
+### データベース構造
+- **Account**: ユーザー管理
+- **Factory**: 工場情報
+- **Manager**: 工場管理者（Account-Factory関連）
+- **Inventory**: 在庫情報
+- **StockMovement**: 在庫移動履歴
+- **Stocktaking**: 棚卸し記録
+
+### API エンドポイント
+- `/api/admin/login/` - 管理者ログイン
+- `/api/user/login/` - ユーザーログイン
+- `/api/inventories/` - 在庫管理
+- `/api/managers/` - 工場管理者管理
+- `/api/stock-movements/` - 在庫移動
+- `/api/stocktakings/` - 棚卸し
+- `/api/factories/` - 工場管理
+
+## 📝 git コマンド
 
 git push origin develop
 

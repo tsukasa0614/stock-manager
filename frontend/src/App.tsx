@@ -17,11 +17,12 @@ import { ProtectedPage } from "./components/ProtectedPage";
 
 function AppLayout() {
   return (
-  <Layout>
-    <ProtectedPage>
-      <Outlet />
-    </ProtectedPage>
-  </Layout>);
+    <Layout>
+      <ProtectedPage>
+        <Outlet />
+      </ProtectedPage>
+    </Layout>
+  );
 }
 
 function App() {
@@ -31,8 +32,11 @@ function App() {
         <AlertProvider>
           <Router>
             <Routes>
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
+              {/* ルートパスは必ずログイン画面に遷移 */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              
+              {/* 認証が必要なページはすべて保護 */}
               <Route element={<AppLayout />}>
                 <Route path="/home" element={<Home />} />
                 <Route path="/inventory" element={<Inventory />} />
@@ -43,6 +47,9 @@ function App() {
                 <Route path="/users" element={<Users />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>
+              
+              {/* 不明なパスはログイン画面に遷移 */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </Router>
         </AlertProvider>

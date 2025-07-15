@@ -36,17 +36,61 @@ class Factory(models.Model):
 
     def __str__(self):
         return self.factory_name
+
+# 工場管理者テーブル
+class Manager(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey('Account', on_delete=models.CASCADE, help_text="管理者ユーザー")
+    factory = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="管理対象工場")
+    role = models.CharField(max_length=255, choices=[
+        ("primary", "主任管理者"),
+        ("assistant", "副管理者"),
+        ("supervisor", "監督者")
+    ], default="primary", help_text="管理者の役割")
+    permissions = models.JSONField(default=dict, help_text="権限設定")
+    assigned_at = models.DateTimeField(auto_now_add=True, help_text="任命日時")
+    is_active = models.BooleanField(default=True, help_text="有効/無効")
+    memo = models.TextField(null=True, blank=True, help_text="メモ")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['user', 'factory']  # 同じユーザーが同じ工場を重複して管理しないように
+        verbose_name = "工場管理者"
+        verbose_name_plural = "工場管理者"
+    
+    def __str__(self):
+        return f"{self.user.id} - {self.factory.factory_name} ({self.get_role_display()})"
     
 class Account(AbstractUser):
     id=models.CharField(max_length=255, primary_key=True,unique=True)
     email =models.EmailField(blank=True)
-    factories = models.ManyToManyField(Factory, blank=True, help_text="管理する工場")
+    # 多対多関係を削除し、Managerテーブル経由でアクセスするように変更
+    # factories = models.ManyToManyField(Factory, blank=True, help_text="管理する工場")
     username = models.CharField(max_length=150, unique=True, null=True, blank=True)
     
     USERNAME_FIELD="id"
     REQUIRED_FIELDS=["email"]
     
     objects=AccountManager()
+    
+    @property
+    def managed_factories(self):
+        """管理している工場を取得"""
+        return Factory.objects.filter(manager__user=self, manager__is_active=True)
+    
+    def is_factory_manager(self, factory):
+        """特定の工場の管理者かどうかを確認"""
+        return Manager.objects.filter(user=self, factory=factory, is_active=True).exists()
+    
+    def get_factory_role(self, factory):
+        """特定の工場での役割を取得"""
+        try:
+            manager = Manager.objects.get(user=self, factory=factory, is_active=True)
+            return manager.role
+        except Manager.DoesNotExist:
+            return None
 
 # 在庫
 class Inventory(models.Model):

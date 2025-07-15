@@ -7,7 +7,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
-from api.models import Account, Factory, Inventory, StockMovement, Stocktaking
+from api.models import Account, Factory, Inventory, StockMovement, Stocktaking, Manager
 
 def create_test_data():
     print("テストデータを作成中...")
@@ -62,14 +62,46 @@ def create_test_data():
     
     print(f"工場を作成しました: {factory1.factory_name}, {factory2.factory_name}")
     
-    # 3. ユーザーと工場の関連付け
+    # 3. ユーザーと工場の関連付け（新しいManagerテーブルを使用）
     admin_user = Account.objects.get(id="test_admin")
     normal_user = Account.objects.get(id="test_user")
     
-    admin_user.factories.add(factory1, factory2)
-    normal_user.factories.add(factory1)
+    # 管理者ユーザーを両方の工場の主任管理者として設定
+    Manager.objects.get_or_create(
+        user=admin_user,
+        factory=factory1,
+        defaults={
+            'role': 'primary',
+            'permissions': {'inventory': True, 'stocktaking': True, 'reports': True, 'admin': True},
+            'is_active': True,
+            'memo': 'システム管理者'
+        }
+    )
     
-    print("ユーザーと工場の関連付けを完了しました")
+    Manager.objects.get_or_create(
+        user=admin_user,
+        factory=factory2,
+        defaults={
+            'role': 'primary',
+            'permissions': {'inventory': True, 'stocktaking': True, 'reports': True, 'admin': True},
+            'is_active': True,
+            'memo': 'システム管理者'
+        }
+    )
+    
+    # 一般ユーザーを東京第一工場の副管理者として設定
+    Manager.objects.get_or_create(
+        user=normal_user,
+        factory=factory1,
+        defaults={
+            'role': 'assistant',
+            'permissions': {'inventory': True, 'stocktaking': True, 'reports': False, 'admin': False},
+            'is_active': True,
+            'memo': '現場担当者'
+        }
+    )
+    
+    print("ユーザーと工場の関連付けを完了しました（Managerテーブル使用）")
     
     # 4. テスト在庫の作成
     test_inventories = [
@@ -78,12 +110,12 @@ def create_test_data():
             'product_name': '商品A',
             'standard': '500g',
             'category': '食品',
-            'stock_quantity': 120,
+            'stock_quantity': 100,
             'lowest_stock': 20,
             'unit': '個',
-            'unit_price': 150.00,
+            'unit_price': 250.00,
             'storing_place': '倉庫A-1',
-            'memo': '人気商品',
+            'memo': 'テスト商品A',
             'factory': factory1
         },
         {
@@ -91,97 +123,102 @@ def create_test_data():
             'product_name': '商品B',
             'standard': '1L',
             'category': '飲料',
-            'stock_quantity': 80,
-            'lowest_stock': 15,
+            'stock_quantity': 50,
+            'lowest_stock': 10,
             'unit': '本',
-            'unit_price': 200.00,
+            'unit_price': 180.00,
             'storing_place': '倉庫A-2',
-            'memo': '',
+            'memo': 'テスト商品B',
             'factory': factory1
         },
         {
             'item_code': 'PROD-003',
             'product_name': '商品C',
             'standard': '300g',
-            'category': '食品',
-            'stock_quantity': 15,
-            'lowest_stock': 30,
+            'category': '日用品',
+            'stock_quantity': 75,
+            'lowest_stock': 15,
             'unit': '個',
-            'unit_price': 180.00,
+            'unit_price': 320.00,
             'storing_place': '倉庫B-1',
-            'memo': '要補充',
-            'factory': factory1
+            'memo': 'テスト商品C',
+            'factory': factory2
         },
         {
             'item_code': 'PROD-004',
             'product_name': '商品D',
-            'standard': '大サイズ',
-            'category': '日用品',
-            'stock_quantity': 0,
-            'lowest_stock': 10,
-            'unit': '個',
-            'unit_price': 300.00,
+            'standard': '2kg',
+            'category': '食品',
+            'stock_quantity': 30,
+            'lowest_stock': 5,
+            'unit': '袋',
+            'unit_price': 450.00,
             'storing_place': '倉庫B-2',
-            'memo': '在庫切れ',
-            'factory': factory1
+            'memo': 'テスト商品D',
+            'factory': factory2
         },
         {
             'item_code': 'PROD-005',
             'product_name': '商品E',
-            'standard': '2L',
-            'category': '飲料',
-            'stock_quantity': 45,
-            'lowest_stock': 20,
-            'unit': '箱',
-            'unit_price': 250.00,
-            'storing_place': '倉庫C-1',
-            'memo': '',
-            'factory': factory2
+            'standard': '100ml',
+            'category': '化粧品',
+            'stock_quantity': 8,  # 最低在庫を下回る設定
+            'lowest_stock': 10,
+            'unit': '本',
+            'unit_price': 1200.00,
+            'storing_place': '倉庫A-3',
+            'memo': 'テスト商品E（在庫少）',
+            'factory': factory1
         }
     ]
     
-    created_count = 0
     for inventory_data in test_inventories:
-        inventory, created = Inventory.objects.get_or_create(
+        Inventory.objects.get_or_create(
             item_code=inventory_data['item_code'],
             defaults=inventory_data
         )
-        if created:
-            created_count += 1
     
-    print(f"在庫データを作成しました: {created_count}件")
+    print("テスト在庫を作成しました")
     
     # 5. テスト在庫移動の作成
-    if StockMovement.objects.count() == 0:
-        movements = [
-            {
-                'item_id': Inventory.objects.get(item_code='PROD-001'),
-                'movement_type': 'in',
-                'quantity': 50,
-                'reason': '初期入庫',
-                'user_id': admin_user,
-                'factory_id': factory1
-            },
-            {
-                'item_id': Inventory.objects.get(item_code='PROD-002'),
-                'movement_type': 'out',
-                'quantity': 20,
-                'reason': '出荷',
-                'user_id': normal_user,
-                'factory_id': factory1
-            }
-        ]
-        
-        for movement_data in movements:
-            StockMovement.objects.create(**movement_data)
-        
-        print("在庫移動データを作成しました")
+    test_movements = [
+        {
+            'item_id': Inventory.objects.get(item_code='PROD-001'),
+            'movement_type': 'in',
+            'quantity': 50,
+            'reason': '初期在庫',
+            'user_id': admin_user,
+            'factory_id': factory1
+        },
+        {
+            'item_id': Inventory.objects.get(item_code='PROD-002'),
+            'movement_type': 'out',
+            'quantity': 10,
+            'reason': '出荷',
+            'user_id': normal_user,
+            'factory_id': factory1
+        }
+    ]
+    
+    for movement_data in test_movements:
+        StockMovement.objects.get_or_create(
+            item_id=movement_data['item_id'],
+            movement_type=movement_data['movement_type'],
+            quantity=movement_data['quantity'],
+            defaults=movement_data
+        )
+    
+    print("テスト在庫移動を作成しました")
     
     print("テストデータの作成が完了しました！")
     print("\n=== ログイン情報 ===")
     print("管理者: test_admin / test123")
     print("一般ユーザー: test_user / test123")
-    print("==================")
+    print("\n=== 作成されたデータ ===")
+    print(f"工場: {Factory.objects.count()}件")
+    print(f"管理者関連: {Manager.objects.count()}件")
+    print(f"在庫: {Inventory.objects.count()}件")
+    print(f"在庫移動: {StockMovement.objects.count()}件")
 
 if __name__ == "__main__":
     create_test_data() 

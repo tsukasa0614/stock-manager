@@ -22,7 +22,7 @@ import {
   FaMapMarkerAlt,
   FaIndustry
 } from 'react-icons/fa';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { apiClient, type InventoryItem, type StockMovement } from '../api/client';
 import { getInventoryStatus } from '../utils/filterUtils';
 
@@ -87,11 +87,11 @@ const ProductDetail: React.FC = () => {
         }
         
         // 在庫一覧から該当商品を検索
-        const inventoriesRes = await apiClient.getInventory("");
+        const inventoriesRes = await apiClient.getInventories();
         let foundProduct: InventoryItem | null = null;
         
-        if (inventoriesRes && Array.isArray(inventoriesRes)) {
-          foundProduct = inventoriesRes.find(item => item.item_code === itemCode) || null;
+        if (inventoriesRes.data && Array.isArray(inventoriesRes.data)) {
+          foundProduct = inventoriesRes.data.find(item => item.item_code === itemCode) || null;
         }
 
         if (!foundProduct) {
@@ -108,9 +108,9 @@ const ProductDetail: React.FC = () => {
 
         // 在庫移動履歴を取得
         const movementsRes = await apiClient.getStockMovements();
-        if (movementsRes && Array.isArray(movementsRes)) {
+        if (movementsRes.data && Array.isArray(movementsRes.data)) {
           // 該当商品の履歴のみフィルタリング
-          const productMovements = movementsRes.filter(
+          const productMovements = movementsRes.data.filter(
             movement => movement.item_code === itemCode
           );
           if (isMountedRef.current) {

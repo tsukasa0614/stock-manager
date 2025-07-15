@@ -1,4 +1,4 @@
-from .models import Inventory, StockMovement, Stocktaking, Factory
+from .models import Inventory, StockMovement, Stocktaking, Factory, Manager
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 
@@ -21,8 +21,32 @@ class LoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
-
-
+class ManagerSerializer(serializers.ModelSerializer):
+    user_id = serializers.CharField(source='user.id', read_only=True)
+    user_name = serializers.CharField(source='user.id', read_only=True)  # usernameではなくidを使用
+    factory_name = serializers.CharField(source='factory.factory_name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    
+    class Meta:
+        model = Manager
+        fields = '__all__'
+        read_only_fields = ['created_at', 'updated_at', 'assigned_at']
+        
+    def validate(self, attrs):
+        # 同じユーザーが同じ工場を重複して管理しないようにチェック
+        user = attrs.get('user')
+        factory = attrs.get('factory')
+        
+        if user and factory:
+            # 更新の場合は現在のインスタンスを除外
+            queryset = Manager.objects.filter(user=user, factory=factory)
+            if self.instance:
+                queryset = queryset.exclude(pk=self.instance.pk)
+            
+            if queryset.exists():
+                raise serializers.ValidationError("このユーザーは既にこの工場の管理者として登録されています")
+        
+        return attrs
 
 class InventorySerializer(serializers.ModelSerializer):
     factory_name = serializers.CharField(source='factory.factory_name', read_only=True)
@@ -76,7 +100,14 @@ class StocktakingSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'updated_at']
 
 class FactorySerializer(serializers.ModelSerializer):
+    managers = ManagerSerializer(many=True, read_only=True, source='manager_set')
+    manager_count = serializers.SerializerMethodField()
+    
     class Meta:
         model = Factory
         fields = '__all__'
         read_only_fields = ['created_at', 'updated_at']
+    
+    def get_manager_count(self, obj):
+        """工場の管理者数を取得"""
+        return obj.manager_set.filter(is_active=True).count()

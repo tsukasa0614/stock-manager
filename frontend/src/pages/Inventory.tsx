@@ -6,10 +6,8 @@ import { Badge } from "../components/ui/badge";
 import { ResponsiveTable } from "../components/ui/responsive-table";
 import { AdvancedFilterPanel } from "../components/inventory/AdvancedFilterPanel";
 import { AlertBanner } from "../components/alerts/AlertBanner";
-import { AlertManagement } from "../components/alerts/AlertManagement";
-import { FaBoxOpen, FaTruck, FaArrowUp, FaMapMarkerAlt, FaClipboardList, FaChartBar, FaEdit, FaEye, FaHistory, FaArrowLeft, FaDownload, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
-import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { useAuth } from "../hooks/useAuth";
+import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar, FaEdit, FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
+import { useAuth } from "../contexts/AuthContext";
 import { useAlert } from "../contexts/AlertContext";
 import { apiClient, type InventoryItem, type StockMovement, type Factory } from "../api/client";
 import { 
@@ -33,75 +31,43 @@ const STATUS_CONFIG: Record<StockStatus, { color: string; textColor: string; lab
   high: { color: 'bg-blue-100', textColor: 'text-blue-700', label: '在庫過多' }
 };
 
-// 管理者用メニューアイテム
+// 管理者用メニューアイテム（商品管理系）
 const adminMenuItems = [
   {
-    key: "check",
-    label: "在庫確認",
-    description: "全在庫の一覧確認と管理",
-    icon: <FaClipboardList />,
-    color: "from-blue-500 to-blue-600",
-    hoverColor: "group-hover:from-blue-600 group-hover:to-blue-700"
-  },
-  {
-    key: "move", 
-    label: "在庫移動",
-    description: "入出庫の記録と管理",
-    icon: <FaTruck />,
-    color: "from-emerald-500 to-emerald-600",
-    hoverColor: "group-hover:from-emerald-600 group-hover:to-emerald-700"
-  },
-  {
-    key: "alerts",
-    label: "アラート管理", 
-    description: "在庫不足等の通知管理",
-    icon: <FaExclamationTriangle />,
-    color: "from-red-500 to-red-600",
-    hoverColor: "group-hover:from-red-600 group-hover:to-red-700"
-  },
-  {
-    key: "analysis",
-    label: "在庫分析",
-    description: "在庫データの分析",
-    icon: <FaChartBar />,
-    color: "from-purple-500 to-purple-600", 
-    hoverColor: "group-hover:from-purple-600 group-hover:to-purple-700"
+    key: "register",
+    label: "商品登録",
+    description: "新しい商品の登録・編集・削除",
+    icon: <FaBoxOpen />,
+    color: "from-blue-400 via-indigo-500 to-blue-600",
+    hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
   }
 ];
 
-// 一般ユーザー用メニューアイテム
+// 一般ユーザー用メニューアイテム（日常業務系）
 const userMenuItems = [
+  {
+    key: "receiving",
+    label: "入荷処理",
+    description: "商品の入荷記録",
+    icon: <FaTruck />,
+    color: "from-sky-400 via-blue-500 to-indigo-600", 
+    hoverColor: "group-hover:from-sky-500 group-hover:via-blue-600 group-hover:to-indigo-700"
+  },
+  {
+    key: "shipping",
+    label: "出荷処理",
+    description: "商品の出荷記録",
+    icon: <FaArrowUp />,
+    color: "from-indigo-400 via-blue-500 to-cyan-600",
+    hoverColor: "group-hover:from-indigo-500 group-hover:via-blue-600 group-hover:to-cyan-700"
+  },
   {
     key: "check",
     label: "在庫確認",
-    description: "在庫一覧の確認",
+    description: "在庫一覧・履歴・アラート確認",
     icon: <FaClipboardList />,
-    color: "from-blue-500 to-blue-600",
-    hoverColor: "group-hover:from-blue-600 group-hover:to-blue-700"
-  },
-  {
-    key: "register",
-    label: "商品登録", 
-    description: "新商品の登録",
-    icon: <FaBoxOpen />,
-    color: "from-green-500 to-green-600",
-    hoverColor: "group-hover:from-green-600 group-hover:to-green-700"
-  },
-  {
-    key: "move",
-    label: "在庫移動",
-    description: "入出庫の記録",
-    icon: <FaTruck />,
-    color: "from-emerald-500 to-emerald-600", 
-    hoverColor: "group-hover:from-emerald-600 group-hover:to-emerald-700"
-  },
-  {
-    key: "history",
-    label: "移動履歴",
-    description: "入出庫履歴の確認",
-    icon: <FaHistory />,
-    color: "from-purple-500 to-purple-600",
-    hoverColor: "group-hover:from-purple-600 group-hover:to-purple-700"
+    color: "from-cyan-400 via-blue-500 to-teal-600",
+    hoverColor: "group-hover:from-cyan-500 group-hover:via-blue-600 group-hover:to-teal-700"
   }
 ];
 
@@ -154,12 +120,14 @@ const Inventory: React.FC = () => {
   };
 
   const handleMenuClick = (key: string) => {
+    console.log('Inventory - Menu clicked:', key, 'User:', user, 'IsAdmin:', isAdmin);
     if (key === "register") {
+      console.log('Inventory - Navigating to /inventory/register');
       navigate("/inventory/register");
-    } else if (key === "history") {
-      setPreviousScreen(null); // メインメニューから来た場合
-      fetchMovements();
-      setSelected(key);
+    } else if (key === "receiving") {
+      setSelected("receiving");
+    } else if (key === "shipping") {
+      setSelected("shipping");
     } else {
       setSelected(key);
     }
@@ -332,7 +300,7 @@ const Inventory: React.FC = () => {
 
       {/* 統計カード */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg">
+        <Card className="bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 border-blue-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -344,62 +312,62 @@ const Inventory: React.FC = () => {
                   <p className="text-blue-600 text-xs">全体: {inventoryList.length}件</p>
                 )}
               </div>
-              <FaBoxOpen className="text-4xl text-blue-400" />
+              <FaBoxOpen className="text-4xl text-blue-400 drop-shadow-lg" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg">
+        <Card className="bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-100 border-sky-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-600 text-sm font-medium">
+                <p className="text-sky-600 text-sm font-medium">
                   {hasActiveFilters(filters) ? '表示中在庫数' : '総在庫数'}
                 </p>
-                <p className="text-3xl font-bold text-emerald-800">{stats.totalQuantity}</p>
+                <p className="text-3xl font-bold text-sky-800">{stats.totalQuantity}</p>
                 {hasActiveFilters(filters) && (
-                  <p className="text-emerald-600 text-xs">
+                  <p className="text-sky-600 text-xs">
                     全体: {inventoryList.reduce((sum, item) => sum + item.stock_quantity, 0)}
                   </p>
                 )}
               </div>
-              <FaClipboardList className="text-4xl text-emerald-400" />
+              <FaClipboardList className="text-4xl text-sky-400 drop-shadow-lg" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg">
+        <Card className="bg-gradient-to-br from-indigo-50 via-blue-50 to-cyan-100 border-indigo-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-600 text-sm font-medium">
+                <p className="text-indigo-600 text-sm font-medium">
                   {hasActiveFilters(filters) ? '表示中在庫価値' : '総在庫価値'}
                 </p>
-                <p className="text-2xl font-bold text-purple-800">¥{stats.totalValue.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-indigo-800">¥{stats.totalValue.toLocaleString()}</p>
                 {hasActiveFilters(filters) && (
-                  <p className="text-purple-600 text-xs">
+                  <p className="text-indigo-600 text-xs">
                     全体: ¥{inventoryList.reduce((sum, item) => sum + (item.stock_quantity * parseFloat(item.unit_price)), 0).toLocaleString()}
                   </p>
                 )}
               </div>
-              <FaChartBar className="text-4xl text-purple-400" />
+              <FaChartBar className="text-4xl text-indigo-400 drop-shadow-lg" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200 shadow-lg">
+        <Card className="bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-100 border-cyan-200 shadow-xl hover:shadow-2xl transition-shadow duration-300">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-600 text-sm font-medium">要注意商品</p>
-                <p className="text-3xl font-bold text-red-800">{stats.lowStockItems}</p>
+                <p className="text-cyan-600 text-sm font-medium">要注意商品</p>
+                <p className="text-3xl font-bold text-cyan-800">{stats.lowStockItems}</p>
                 {hasActiveFilters(filters) && (
-                  <p className="text-red-600 text-xs">
+                  <p className="text-cyan-600 text-xs">
                     全体: {inventoryList.filter(item => item.stock_quantity <= item.lowest_stock).length}件
                   </p>
                 )}
               </div>
-              <FaTruck className="text-4xl text-red-400" />
+              <FaTruck className="text-4xl text-cyan-400 drop-shadow-lg" />
             </div>
           </CardContent>
         </Card>
@@ -416,20 +384,20 @@ const Inventory: React.FC = () => {
             <div className="w-1 h-4 md:h-6 bg-blue-500 mr-3"></div>
             管理者機能
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <div className="flex justify-center">
             {adminMenuItems.map(item => (
               <Card
                 key={item.key}
-                className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] border-0 shadow-lg bg-white touch-manipulation"
+                className="group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-0 shadow-xl bg-white touch-manipulation max-w-md"
                 onClick={() => handleMenuClick(item.key)}
               >
                 <CardContent className="p-0">
-                  <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-4 md:p-6`}>
+                  <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-4 md:p-6 rounded-lg`}>
                     <div className="flex items-center gap-3 md:gap-4">
-                      <div className="text-3xl md:text-4xl text-white">{item.icon}</div>
+                      <div className="text-3xl md:text-4xl text-white drop-shadow-lg">{item.icon}</div>
                       <div className="text-white">
-                        <h3 className="text-lg md:text-xl font-bold">{item.label}</h3>
-                        <p className="text-blue-100 text-sm md:text-base">{item.description}</p>
+                        <h3 className="text-lg md:text-xl font-bold drop-shadow-sm">{item.label}</h3>
+                        <p className="text-white/90 text-sm md:text-base drop-shadow-sm">{item.description}</p>
                       </div>
                     </div>
                   </div>
@@ -443,23 +411,23 @@ const Inventory: React.FC = () => {
       {/* 一般ユーザー用メニュー */}
       <div>
         <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center">
-          <div className="w-1 h-4 md:h-6 bg-emerald-500 mr-3"></div>
+          <div className="w-1 h-4 md:h-6 bg-indigo-500 mr-3"></div>
           基本機能
         </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           {userMenuItems.map(item => (
             <Card
               key={item.key}
-              className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] border-0 shadow-lg bg-white touch-manipulation"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-0 shadow-xl bg-white touch-manipulation"
               onClick={() => handleMenuClick(item.key)}
             >
               <CardContent className="p-0">
-                <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-4 md:p-6`}>
+                <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-4 md:p-6 rounded-lg`}>
                   <div className="flex flex-col items-center text-center">
-                    <div className="text-3xl md:text-4xl text-white mb-2 md:mb-3">{item.icon}</div>
+                    <div className="text-3xl md:text-4xl text-white mb-2 md:mb-3 drop-shadow-lg">{item.icon}</div>
                     <div className="text-white">
-                      <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2">{item.label}</h3>
-                      <p className="text-white/80 text-xs md:text-sm hidden md:block">{item.description}</p>
+                      <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2 drop-shadow-sm">{item.label}</h3>
+                      <p className="text-white/90 text-xs md:text-sm hidden md:block drop-shadow-sm">{item.description}</p>
                     </div>
                   </div>
                 </div>
@@ -580,8 +548,7 @@ const Inventory: React.FC = () => {
         <AdvancedFilterPanel
           filters={filters}
           onFiltersChange={setFilters}
-          inventories={inventoryList}
-          factories={factories}
+          onReset={() => setFilters(initialFilters)}
         />
 
         {/* 在庫一覧テーブル */}
@@ -912,67 +879,22 @@ const Inventory: React.FC = () => {
     );
   };
 
-  // アラート管理画面の描画
-  const renderAlertManagement = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button 
-          onClick={() => setSelected(null)}
-          variant="outline"
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
-        >
-          <FaArrowLeft className="mr-2" />
-          戻る
-        </Button>
-        <h2 className="text-2xl font-bold text-gray-900">アラート管理</h2>
-      </div>
-      <AlertManagement />
-    </div>
-  );
-
-  // 在庫分析画面の描画（プレースホルダー）
-  const renderAnalysis = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button 
-          onClick={() => setSelected(null)}
-          variant="outline"
-          className="border-gray-300 text-gray-700 hover:bg-gray-50"
-        >
-          <FaArrowLeft className="mr-2" />
-          戻る
-        </Button>
-        <h2 className="text-2xl font-bold text-gray-900">在庫分析</h2>
-      </div>
-      <Card>
-        <CardContent className="p-8 text-center">
-          <FaChartBar className="text-6xl text-gray-400 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">在庫分析機能</h3>
-          <p className="text-gray-600">在庫の動向分析、ABC分析、回転率分析などの機能を実装予定です。</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
   if (selected === null) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <div className="max-w-7xl mx-auto px-4 py-8">
           {/* ヘッダータイトル */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-4 mb-4">
-              <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-blue-500 via-indigo-600 to-blue-700 rounded-2xl shadow-lg">
                 <FaBoxOpen className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   在庫管理システム
                 </h1>
                 <p className="text-gray-600">Inventory Management System</p>
               </div>
-            </div>
-            <div className="mt-4 flex justify-center">
-              <UserModeSwitch />
             </div>
           </div>
 
@@ -994,19 +916,16 @@ const Inventory: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto py-6 space-y-6">
-        {/* 本番では削除: 開発用のユーザー切り替え機能 */}
-        <UserModeSwitch />
-
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl border border-white/30 p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-blue-500 via-indigo-600 to-blue-700 rounded-2xl shadow-lg">
                 <FaBoxOpen className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   在庫管理システム
                 </h1>
                 <p className="text-gray-600">Inventory Management System</p>
@@ -1068,8 +987,6 @@ const Inventory: React.FC = () => {
               </CardContent>
             </Card>
           )}
-          {selected === "alerts" && renderAlertManagement()}
-          {selected === "analysis" && renderAnalysis()}
         </div>
       </div>
     </div>

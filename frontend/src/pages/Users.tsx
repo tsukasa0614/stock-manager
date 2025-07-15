@@ -1,11 +1,9 @@
 import { useState } from "react";
-import { UserList } from "../components/users/UserList";
 import { UserDialog } from "../components/users/UserDialog";
 import { Button } from "../components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
-import { useAuth } from "../hooks/useAuth";
-import { UserModeSwitch } from "../components/common/UserModeSwitch";
-import { FaUsers, FaUserPlus, FaChartLine, FaCrown, FaUserCheck, FaCalendarAlt, FaSearch } from "react-icons/fa";
+import { useAuth } from "../contexts/AuthContext";
+import { FaUsers, FaUserPlus, FaChartLine, FaCrown, FaUserCheck, FaCalendarAlt, FaSearch, FaUser } from "react-icons/fa";
 
 interface User {
   id: string;
@@ -17,53 +15,52 @@ interface User {
   status: "active" | "inactive";
 }
 
-// モックデータ（拡張版）
+// モックユーザーデータ
 const mockUsers: User[] = [
   {
-    id: "1",
-    name: "山田太郎",
-    email: "yamada@example.com",
+    id: "admin",
+    name: "管理者",
+    email: "admin@example.com",
     role: "admin",
     createdAt: "2024-01-01",
-    lastLogin: "2024-05-20",
-    status: "active",
+    lastLogin: "2024-01-15",
+    status: "active"
   },
   {
-    id: "2",
-    name: "鈴木花子",
-    email: "suzuki@example.com",
-    role: "user",
-    createdAt: "2024-01-02",
-    lastLogin: "2024-05-19",
-    status: "active",
-  },
-  {
-    id: "3",
-    name: "佐藤次郎",
-    email: "sato@example.com",
-    role: "user",
-    createdAt: "2024-01-15",
-    lastLogin: "2024-05-18",
-    status: "active",
-  },
-  {
-    id: "4",
-    name: "田中美咲",
+    id: "user1",
+    name: "田中太郎",
     email: "tanaka@example.com",
     role: "user",
-    createdAt: "2024-02-01",
-    lastLogin: "2024-05-10",
-    status: "inactive",
+    createdAt: "2024-01-05",
+    lastLogin: "2024-01-14",
+    status: "active"
   },
   {
-    id: "5",
-    name: "高橋健一",
-    email: "takahashi@example.com",
-    role: "admin",
-    createdAt: "2024-02-15",
-    lastLogin: "2024-05-20",
-    status: "active",
+    id: "user2",
+    name: "佐藤花子",
+    email: "sato@example.com",
+    role: "user",
+    createdAt: "2024-01-10",
+    lastLogin: "2024-01-13",
+    status: "active"
   },
+  {
+    id: "user3",
+    name: "山田次郎",
+    email: "yamada@example.com",
+    role: "user",
+    createdAt: "2024-01-12",
+    status: "inactive"
+  },
+  {
+    id: "user4",
+    name: "鈴木一郎",
+    email: "suzuki@example.com",
+    role: "user",
+    createdAt: "2024-01-08",
+    lastLogin: "2024-01-12",
+    status: "active"
+  }
 ];
 
 export function Users() {
@@ -120,18 +117,15 @@ export function Users() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-red-100">
       <div className="container mx-auto py-6 space-y-6">
-        {/* 本番では削除: 開発用のユーザー切り替え機能 */}
-        <UserModeSwitch />
-
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
           {/* ヘッダー */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-r from-red-500 to-rose-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg">
                 <FaUsers className="text-2xl text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent">
                   ユーザー管理
                 </h1>
                 <p className="text-gray-600">User Management System</p>
@@ -143,7 +137,7 @@ export function Users() {
                   setEditingUser(undefined);
                   setIsDialogOpen(true);
                 }}
-                className="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white px-6 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 flex items-center gap-2"
               >
                 <FaUserPlus />
                 ユーザーを追加
@@ -152,89 +146,90 @@ export function Users() {
           </div>
 
           {/* 統計カード */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card className="bg-white border-0 shadow-xl">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-blue-600 text-sm font-medium">総ユーザー数</p>
-                    <p className="text-3xl font-bold text-blue-800">{stats.total}</p>
-                    <p className="text-blue-600 text-xs">人</p>
+                    <p className="text-sm font-medium text-red-600">総ユーザー数</p>
+                    <p className="text-2xl font-bold text-red-700">{stats.total}</p>
                   </div>
-                  <FaUsers className="text-4xl text-blue-400" />
+                  <div className="p-3 bg-red-100 rounded-full">
+                    <FaUsers className="text-red-600 text-xl" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-white border-0 shadow-xl">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-purple-600 text-sm font-medium">管理者</p>
-                    <p className="text-3xl font-bold text-purple-800">{stats.admins}</p>
-                    <p className="text-purple-600 text-xs">人</p>
+                    <p className="text-sm font-medium text-red-600">管理者数</p>
+                    <p className="text-2xl font-bold text-red-700">{stats.admins}</p>
                   </div>
-                  <FaCrown className="text-4xl text-purple-400" />
+                  <div className="p-3 bg-red-100 rounded-full">
+                    <FaCrown className="text-red-600 text-xl" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-white border-0 shadow-xl">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-emerald-600 text-sm font-medium">アクティブ</p>
-                    <p className="text-3xl font-bold text-emerald-800">{stats.activeUsers}</p>
-                    <p className="text-emerald-600 text-xs">人</p>
+                    <p className="text-sm font-medium text-red-600">アクティブユーザー</p>
+                    <p className="text-2xl font-bold text-red-700">{stats.activeUsers}</p>
                   </div>
-                  <FaUserCheck className="text-4xl text-emerald-400" />
+                  <div className="p-3 bg-red-100 rounded-full">
+                    <FaUserCheck className="text-red-600 text-xl" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200 shadow-lg hover:shadow-xl transition-all duration-300">
+            <Card className="bg-white border-0 shadow-xl">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-orange-600 text-sm font-medium">今月新規</p>
-                    <p className="text-3xl font-bold text-orange-800">{stats.newThisMonth}</p>
-                    <p className="text-orange-600 text-xs">人</p>
+                    <p className="text-sm font-medium text-red-600">新規ユーザー</p>
+                    <p className="text-2xl font-bold text-red-700">{stats.newThisMonth}</p>
                   </div>
-                  <FaCalendarAlt className="text-4xl text-orange-400" />
+                  <div className="p-3 bg-red-100 rounded-full">
+                    <FaCalendarAlt className="text-red-600 text-xl" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* 検索・フィルター */}
-          <Card className="shadow-xl bg-white border-0 mb-6">
-            <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
-              <CardTitle className="text-gray-900 text-lg flex items-center gap-2">
+          {/* フィルター・検索 */}
+          <Card className="mb-8 shadow-xl bg-white border-0">
+            <CardHeader className="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-200">
+              <CardTitle className="text-red-900 text-lg flex items-center gap-2">
                 <FaSearch />
-                検索・フィルター
+                フィルター・検索
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">検索</label>
-                  <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="名前またはメールアドレス"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900 placeholder-gray-500"
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    placeholder="名前またはメールアドレス..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">権限</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">役割</label>
                   <select
                     value={roleFilter}
                     onChange={(e) => setRoleFilter(e.target.value as "all" | "admin" | "user")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
+                    className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900"
                   >
                     <option value="all">すべて</option>
                     <option value="admin">管理者</option>
@@ -246,7 +241,7 @@ export function Users() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-gray-900"
+                    className="w-full px-4 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white text-gray-900"
                   >
                     <option value="all">すべて</option>
                     <option value="active">アクティブ</option>
@@ -266,25 +261,106 @@ export function Users() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <UserList
-                users={filteredUsers}
-                isAdmin={isAdmin}
-                onEdit={isAdmin ? (user) => {
-                  setEditingUser(user);
-                  setIsDialogOpen(true);
-                } : undefined}
-                onDelete={isAdmin ? handleDeleteUser : undefined}
-              />
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-red-900">ユーザー</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-red-900">役割</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-red-900">ステータス</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-red-900">最終ログイン</th>
+                      <th className="px-6 py-4 text-left text-sm font-medium text-red-900">登録日</th>
+                      {isAdmin && <th className="px-6 py-4 text-left text-sm font-medium text-red-900">操作</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-red-100">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-red-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-white font-bold">
+                              {user.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.role === "admin" 
+                              ? "bg-red-100 text-red-800" 
+                              : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {user.role === "admin" ? (
+                              <>
+                                <FaCrown className="mr-1" />
+                                管理者
+                              </>
+                            ) : (
+                              <>
+                                <FaUser className="mr-1" />
+                                一般ユーザー
+                              </>
+                            )}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            user.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}>
+                            {user.status === "active" ? "アクティブ" : "非アクティブ"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {user.lastLogin || "未ログイン"}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {user.createdAt}
+                        </td>
+                        {isAdmin && (
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setIsDialogOpen(true);
+                                }}
+                                className="bg-red-500 hover:bg-red-600 text-white"
+                                size="sm"
+                              >
+                                編集
+                              </Button>
+                              <Button
+                                onClick={() => handleDeleteUser(user)}
+                                className="bg-gray-500 hover:bg-gray-600 text-white"
+                                size="sm"
+                              >
+                                削除
+                              </Button>
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <UserDialog
-          open={isDialogOpen}
-          onOpenChange={setIsDialogOpen}
-          onSubmit={handleSubmit}
-          user={editingUser}
-        />
+        {isAdmin && (
+          <UserDialog
+            open={isDialogOpen}
+            onOpenChange={setIsDialogOpen}
+            onSubmit={handleSubmit}
+            user={editingUser}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000/api';
-
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  status: number;
-}
+// APIクライアントの型定義
 
 export interface InventoryItem {
   id: number;
@@ -67,36 +61,94 @@ export interface Factory {
   memo?: string;
   created_at: string;
   updated_at: string;
+  managers?: Manager[];
+  manager_count?: number;
+}
+
+export interface Manager {
+  id: number;
+  user: string;
+  user_id: string;
+  user_name: string;
+  factory: number;
+  factory_name: string;
+  role: 'primary' | 'assistant' | 'supervisor';
+  role_display: string;
+  permissions: {
+    inventory?: boolean;
+    stocktaking?: boolean;
+    reports?: boolean;
+    admin?: boolean;
+  };
+  assigned_at: string;
+  is_active: boolean;
+  memo?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  is_staff: boolean;
+  is_superuser: boolean;
+  role: 'admin' | 'user';
+  managed_factories: {
+    id: number;
+    name: string;
+    role: 'primary' | 'assistant' | 'supervisor';
+    permissions: {
+      inventory?: boolean;
+      stocktaking?: boolean;
+      reports?: boolean;
+      admin?: boolean;
+    };
+  }[];
+}
+
+export interface LoginResponse {
+  token: string;
+  user: User;
+  admin_features?: {
+    can_manage_users: boolean;
+    can_manage_factories: boolean;
+    can_manage_inventory: boolean;
+    can_view_reports: boolean;
+  };
+  user_features?: {
+    can_manage_inventory: boolean;
+    can_do_stocktaking: boolean;
+    can_view_reports: boolean;
+  };
+}
+
+export interface ApiResponse<T> {
+  data?: T;
+  error?: string;
 }
 
 class ApiClient {
-  private baseUrl: string;
+  private baseURL: string;
   private token: string | null = null;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
-  setToken(token: string) {
-    this.token = token;
+  constructor(baseURL: string = 'http://localhost:8000/api') {
+    this.baseURL = baseURL;
+    this.token = localStorage.getItem('authToken');
   }
 
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseURL}${endpoint}`;
     
-    // FormDataの場合はContent-Typeを設定しない（ブラウザが自動設定）
-    // JSONの場合のみContent-Typeを設定
     const headers: Record<string, string> = {
-      ...(this.token && { Authorization: `Token ${this.token}` }),
-      ...(options.headers as Record<string, string>),
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
     };
-    
-    // bodyがFormDataでない場合のみContent-Typeを設定
-    if (options.body && !(options.body instanceof FormData)) {
-      headers['Content-Type'] = 'application/json';
+
+    if (this.token) {
+      headers['Authorization'] = `Token ${this.token}`;
     }
 
     try {
@@ -105,92 +157,116 @@ class ApiClient {
         headers,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         return {
-          error: data.error || 'API エラーが発生しました',
-          status: response.status,
+          error: errorData.error || errorData.message || `HTTP Error ${response.status}`,
         };
       }
 
-      return {
-        data,
-        status: response.status,
-      };
+      const data = await response.json();
+      return { data };
     } catch (error) {
       return {
-        error: 'ネットワークエラーが発生しました',
-        status: 0,
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
 
-  // 在庫管理 API
+  setToken(token: string) {
+    this.token = token;
+    localStorage.setItem('authToken', token);
+  }
+
+  clearToken() {
+    this.token = null;
+    localStorage.removeItem('authToken');
+  }
+
+  // 認証API
+  async login(id: string, password: string): Promise<ApiResponse<LoginResponse>> {
+    return this.request<LoginResponse>('/login/', {
+      method: 'POST',
+      body: JSON.stringify({ id, password }),
+    });
+  }
+
+  async adminLogin(id: string, password: string): Promise<ApiResponse<LoginResponse>> {
+    return this.request<LoginResponse>('/admin/login/', {
+      method: 'POST',
+      body: JSON.stringify({ id, password }),
+    });
+  }
+
+  async userLogin(id: string, password: string): Promise<ApiResponse<LoginResponse>> {
+    return this.request<LoginResponse>('/user/login/', {
+      method: 'POST',
+      body: JSON.stringify({ id, password }),
+    });
+  }
+
+  // 工場管理者API
+  async getManagers(): Promise<ApiResponse<Manager[]>> {
+    return this.request<Manager[]>('/managers/');
+  }
+
+  async createManager(managerData: Partial<Manager>): Promise<ApiResponse<Manager>> {
+    return this.request<Manager>('/managers/', {
+      method: 'POST',
+      body: JSON.stringify(managerData),
+    });
+  }
+
+  async getManager(id: number): Promise<ApiResponse<Manager>> {
+    return this.request<Manager>(`/managers/${id}/`);
+  }
+
+  async updateManager(id: number, managerData: Partial<Manager>): Promise<ApiResponse<Manager>> {
+    return this.request<Manager>(`/managers/${id}/`, {
+      method: 'PUT',
+      body: JSON.stringify(managerData),
+    });
+  }
+
+  async deleteManager(id: number): Promise<ApiResponse<void>> {
+    return this.request<void>(`/managers/${id}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  // 在庫API
   async getInventories(): Promise<ApiResponse<InventoryItem[]>> {
     return this.request<InventoryItem[]>('/inventories/');
+  }
+
+  async createInventory(inventoryData: FormData): Promise<ApiResponse<InventoryItem>> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Token ${this.token}`;
+    }
+
+    return this.request<InventoryItem>('/inventories/', {
+      method: 'POST',
+      body: inventoryData,
+      headers,
+    });
   }
 
   async getInventory(itemCode: string): Promise<ApiResponse<InventoryItem>> {
     return this.request<InventoryItem>(`/inventories/${itemCode}/`);
   }
 
-  async createInventory(data: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at' | 'factory_name'>): Promise<ApiResponse<InventoryItem>> {
-    return this.request<InventoryItem>('/inventories/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  // 画像アップロード対応の商品作成メソッド
-  async createInventoryWithImage(data: Omit<InventoryItem, 'id' | 'created_at' | 'updated_at' | 'factory_name'>, imageFile?: File): Promise<ApiResponse<InventoryItem>> {
-    if (imageFile) {
-      // 画像ファイルがある場合はFormDataを使用
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-      formData.append('image', imageFile);
-      
-      return this.request<InventoryItem>('/inventories/', {
-        method: 'POST',
-        body: formData,
-      });
-    } else {
-      // 画像ファイルがない場合は従来のJSONリクエスト
-      return this.createInventory(data);
+  async updateInventory(itemCode: string, inventoryData: FormData): Promise<ApiResponse<InventoryItem>> {
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers['Authorization'] = `Token ${this.token}`;
     }
-  }
 
-  async updateInventory(itemCode: string, data: Partial<InventoryItem>): Promise<ApiResponse<InventoryItem>> {
     return this.request<InventoryItem>(`/inventories/${itemCode}/`, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: inventoryData,
+      headers,
     });
-  }
-
-  // 画像アップロード対応の商品更新メソッド
-  async updateInventoryWithImage(itemCode: string, data: Partial<InventoryItem>, imageFile?: File): Promise<ApiResponse<InventoryItem>> {
-    if (imageFile) {
-      // 画像ファイルがある場合はFormDataを使用
-      const formData = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-      formData.append('image', imageFile);
-      
-      return this.request<InventoryItem>(`/inventories/${itemCode}/`, {
-        method: 'PUT',
-        body: formData,
-      });
-    } else {
-      // 画像ファイルがない場合は従来のJSONリクエスト
-      return this.updateInventory(itemCode, data);
-    }
   }
 
   async deleteInventory(itemCode: string): Promise<ApiResponse<void>> {
@@ -199,44 +275,34 @@ class ApiClient {
     });
   }
 
-  // 在庫移動 API
-  async getStockMovements(params?: { item_code?: string; movement_type?: 'in' | 'out' }): Promise<ApiResponse<StockMovement[]>> {
-    const queryParams = new URLSearchParams();
-    if (params?.item_code) queryParams.append('item_code', params.item_code);
-    if (params?.movement_type) queryParams.append('movement_type', params.movement_type);
-    
-    const endpoint = `/stock-movements/${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    return this.request<StockMovement[]>(endpoint);
+  // 在庫移動API
+  async getStockMovements(): Promise<ApiResponse<StockMovement[]>> {
+    return this.request<StockMovement[]>('/stock-movements/');
   }
 
-  async createStockMovement(data: Omit<StockMovement, 'id' | 'created_at' | 'updated_at' | 'item_name' | 'item_code' | 'user_name' | 'factory_name'>): Promise<ApiResponse<StockMovement>> {
+  async createStockMovement(movementData: Partial<StockMovement>): Promise<ApiResponse<StockMovement>> {
     return this.request<StockMovement>('/stock-movements/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(movementData),
     });
   }
 
-  // 棚卸 API
+  // 棚卸API
   async getStocktakings(): Promise<ApiResponse<Stocktaking[]>> {
     return this.request<Stocktaking[]>('/stocktakings/');
   }
 
-  async createStocktaking(data: Omit<Stocktaking, 'id' | 'created_at' | 'updated_at' | 'item_name' | 'item_code' | 'user_name' | 'difference'>): Promise<ApiResponse<Stocktaking>> {
+  async createStocktaking(stocktakingData: Partial<Stocktaking>): Promise<ApiResponse<Stocktaking>> {
     return this.request<Stocktaking>('/stocktakings/', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(stocktakingData),
     });
   }
 
-  // 工場 API
+  // 工場API
   async getFactories(): Promise<ApiResponse<Factory[]>> {
     return this.request<Factory[]>('/factories/');
   }
-
-  // ヘルスチェック API
-  async healthCheck(): Promise<ApiResponse<{ status: string }>> {
-    return this.request<{ status: string }>('/health/');
-  }
 }
 
-export const apiClient = new ApiClient(API_BASE_URL); 
+export const apiClient = new ApiClient(); 
