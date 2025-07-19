@@ -63,8 +63,8 @@ const Settings: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg">
                 <FaCog className="text-2xl text-white" />
-              </div>
-              <div>
+            </div>
+            <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent">
                   設定
                 </h1>
@@ -94,8 +94,8 @@ const Settings: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg">
                   {user?.id?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div>
+            </div>
+            <div>
                   <p className="text-xl font-semibold text-gray-800">{user?.id || 'ユーザー'}</p>
                   <div className="flex items-center gap-2 mt-2">
                     {user?.role === 'admin' ? (
@@ -111,32 +111,32 @@ const Settings: React.FC = () => {
                       {user?.role === 'admin' ? '管理者' : '現場担当者'}
                     </span>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
           {/* 基本設定 */}
-          <Card className="shadow-lg bg-white border-0">
-            <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
-              <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
+      <Card className="shadow-lg bg-white border-0">
+        <CardHeader className="bg-gradient-to-r from-purple-50 to-purple-100 border-b border-purple-200">
+          <CardTitle className="text-purple-900 text-lg flex items-center gap-2">
                 <FaCog />
                 基本設定
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-6">
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+    <div className="space-y-6">
                 {/* 言語設定 */}
-                <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FaLanguage className="text-purple-600" />
                     </div>
-                    <div>
+            <div>
                       <p className="font-medium text-gray-800">言語</p>
                       <p className="text-sm text-gray-600">表示言語を選択</p>
                     </div>
-                  </div>
+            </div>
                   <select
                     value={settings.language}
                     onChange={(e) => handleSettingChange('language', e.target.value)}
@@ -145,44 +145,44 @@ const Settings: React.FC = () => {
                     <option value="ja">日本語</option>
                     <option value="en">English</option>
                   </select>
-                </div>
+          </div>
 
                 {/* 通知設定 */}
-                <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FaBell className="text-purple-600" />
                     </div>
-                    <div>
+            <div>
                       <p className="font-medium text-gray-800">通知</p>
                       <p className="text-sm text-gray-600">システム通知を有効化</p>
                     </div>
-                  </div>
-                  <ToggleSwitch
+            </div>
+            <ToggleSwitch
                     enabled={settings.notifications}
                     onChange={() => handleSettingChange('notifications', !settings.notifications)}
-                  />
-                </div>
+            />
+          </div>
 
                 {/* テーマ設定 */}
-                <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FaPalette className="text-purple-600" />
-                    </div>
-                    <div>
+          </div>
+            <div>
                       <p className="font-medium text-gray-800">テーマ</p>
                       <p className="text-sm text-gray-600">表示テーマを選択</p>
-                    </div>
-                  </div>
-                  <select
-                    value={settings.theme}
+          </div>
+    </div>
+            <select
+              value={settings.theme}
                     onChange={(e) => handleSettingChange('theme', e.target.value)}
                     className="px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                  >
+            >
                     <option value="light">ライト</option>
                     <option value="dark">ダーク</option>
-                  </select>
+            </select>
                 </div>
 
                 {/* 表示件数設定 */}
@@ -190,26 +190,26 @@ const Settings: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <FaCog className="text-purple-600" />
-                    </div>
-                    <div>
+          </div>
+          <div>
                       <p className="font-medium text-gray-800">表示件数</p>
                       <p className="text-sm text-gray-600">1ページあたりの表示数</p>
                     </div>
                   </div>
-                  <select
-                    value={settings.itemsPerPage}
+            <select
+              value={settings.itemsPerPage}
                     onChange={(e) => handleSettingChange('itemsPerPage', parseInt(e.target.value))}
                     className="px-4 py-2 border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-                  >
+            >
                     <option value={10}>10件</option>
                     <option value={20}>20件</option>
                     <option value={50}>50件</option>
                     <option value={100}>100件</option>
-                  </select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            </select>
+          </div>
+          </div>
+        </CardContent>
+      </Card>
         </div>
       </div>
     </div>

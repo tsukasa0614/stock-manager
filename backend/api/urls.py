@@ -23,4 +23,25 @@ urlpatterns = [
     
     # 工場
     path('factories/', views.FactoryListView.as_view(), name='factory_list'),
+    
+    # 倉庫（旧システム）
+    path('warehouses/', views.WarehouseListView.as_view(), name='warehouse_list'),
+    path('warehouses/<int:pk>/', views.WarehouseDetailView.as_view(), name='warehouse_detail'),
+    
+    # 置き場（旧システム）
+    path('storage-locations/', views.StorageLocationListView.as_view(), name='storage_location_list'),
+    path('storage-locations/<int:pk>/', views.StorageLocationDetailView.as_view(), name='storage_location_detail'),
+    
+    # 置き場（新システム）
+    path('storage-areas/', views.StorageAreaListView.as_view(), name='storage_area_list'),
+    path('storage-areas/<int:pk>/', views.StorageAreaDetailView.as_view(), name='storage_area_detail'),
+    
+    # 座標（新システム）
+    path('coordinates/', views.CoordinateListView.as_view(), name='coordinate_list'),
+    path('coordinates/<int:pk>/', views.CoordinateDetailView.as_view(), name='coordinate_detail'),
+    
+    # 選択情報管理
+    path('selection-options/', views.SelectionOptionListView.as_view(), name='selection_option_list'),
+    path('selection-options/<int:pk>/', views.SelectionOptionDetailView.as_view(), name='selection_option_detail'),
+    path('selection-options/all/', views.SelectionOptionsView.as_view(), name='selection_options_all'),
 ] 

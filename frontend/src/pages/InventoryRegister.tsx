@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { FaPlus, FaTrash, FaEdit, FaUpload, FaImage, FaArrowLeft, FaBoxOpen, FaSearch, FaExclamationTriangle } from "react-icons/fa";
-import { apiClient, type InventoryItem, type Factory } from "../api/client";
+import { apiClient, type InventoryItem, type Factory, type Warehouse, type StorageLocation } from "../api/client";
 import { useAuth } from "../contexts/AuthContext";
 
 const tabs = [
@@ -15,7 +15,8 @@ const tabs = [
 
 const categories = ["食品", "飲料", "日用品", "電化製品", "家具", "衣類", "文房具", "その他", "消耗品"];
 const units = ["個", "箱", "袋", "本", "kg", "g", "L", "mL", "m", "cm", "セット"];
-const locations = ["倉庫A-1", "倉庫A-2", "倉庫B-1", "倉庫B-2", "倉庫C-1", "倉庫C-2", "店舗前", "冷蔵庫"];
+const suppliers = ["仕入先A", "仕入先B"];
+
 
 const InventoryRegister: React.FC = () => {
   const [tab, setTab] = useState("add");
@@ -24,21 +25,17 @@ const InventoryRegister: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<InventoryItem | null>(null);
   const [inventories, setInventories] = useState<InventoryItem[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-
-  // デバッグ: ユーザー情報をログ出力
-  console.log('InventoryRegister - User Info:', user);
-  console.log('InventoryRegister - User Role:', user?.role);
-  console.log('InventoryRegister - Is Admin Check:', user?.role === "admin");
 
   // 管理者権限チェック
   const isAdmin = user?.role === "admin";
 
   // 管理者権限がない場合のアクセス制御
   if (!isAdmin) {
-    console.log('InventoryRegister - Access Denied. User:', user, 'IsAdmin:', isAdmin);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
@@ -74,7 +71,7 @@ const InventoryRegister: React.FC = () => {
     );
   }
 
-  console.log('InventoryRegister - Access Granted. User is Admin.');
+
 
   // フォーム状態
   const [formData, setFormData] = useState({
@@ -86,9 +83,11 @@ const InventoryRegister: React.FC = () => {
     lowest_stock: "",
     unit: "",
     unit_price: "",
+    supplier: "",
+    factory: "",
+    warehouse: "",
     storing_place: "",
     memo: "",
-    factory: "",
     image: null as File | null
   });
 
@@ -101,10 +100,12 @@ const InventoryRegister: React.FC = () => {
     try {
       setLoading(true);
       
-      // 在庫データと工場データを並行取得
-      const [inventoriesRes, factoriesRes] = await Promise.all([
+      // 在庫データ、工場データ、倉庫データ、置き場データを並行取得
+      const [inventoriesRes, factoriesRes, warehousesRes, storageLocationsRes] = await Promise.all([
         apiClient.getInventories(),
-        apiClient.getFactories()
+        apiClient.getFactories(),
+        apiClient.getWarehouses(),
+        apiClient.getStorageLocations()
       ]);
 
       if (inventoriesRes.data) {
@@ -117,6 +118,18 @@ const InventoryRegister: React.FC = () => {
         setFactories(factoriesRes.data);
       } else {
         alert(factoriesRes.error || "工場データの取得に失敗しました");
+      }
+
+      if (warehousesRes.data) {
+        setWarehouses(warehousesRes.data);
+      } else {
+        console.error(warehousesRes.error || "倉庫データの取得に失敗しました");
+      }
+
+      if (storageLocationsRes.data) {
+        setStorageLocations(storageLocationsRes.data);
+      } else {
+        console.error(storageLocationsRes.error || "置き場データの取得に失敗しました");
       }
     } catch (err) {
       alert("データの読み込み中にエラーが発生しました");
@@ -151,9 +164,11 @@ const InventoryRegister: React.FC = () => {
       lowest_stock: "",
       unit: "",
       unit_price: "",
+      supplier: "",
+      factory: "",
+      warehouse: "",
       storing_place: "",
       memo: "",
-      factory: "",
       image: null
     });
     setPreviewImage(null);
@@ -279,9 +294,11 @@ const InventoryRegister: React.FC = () => {
       lowest_stock: product.lowest_stock.toString(),
       unit: product.unit,
       unit_price: product.unit_price,
+      supplier: product.supplier || "",
+      factory: product.factory.toString(),
+      warehouse: "", // 既存データから推測困難なため空文字で初期化
       storing_place: product.storing_place || "",
       memo: product.memo || "",
-      factory: product.factory.toString(),
       image: null
     });
     setPreviewImage(product.image || null);
@@ -486,30 +503,81 @@ const InventoryRegister: React.FC = () => {
           />
         </div>
         <div>
-          <label className="block mb-2 font-semibold text-gray-700 text-sm md:text-base">保管場所</label>
+          <label className="block mb-2 font-semibold text-gray-700 text-sm md:text-base">発注先 *</label>
           <select
-            value={formData.storing_place}
-            onChange={(e) => handleInputChange("storing_place", e.target.value)}
+            required
+            value={formData.supplier}
+            onChange={(e) => handleInputChange("supplier", e.target.value)}
             className="w-full border border-blue-200 rounded-lg px-3 md:px-4 py-2 md:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm md:text-base"
           >
-            <option value="">保管場所を選択</option>
-            {locations.map(l => <option key={l} value={l}>{l}</option>)}
+            <option value="">発注先を選択</option>
+            {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       </div>
 
-      <div className="grid gap-4 md:gap-6 md:grid-cols-1">
-        <div>
-          <label className="block mb-2 font-semibold text-gray-700 text-sm md:text-base">工場 *</label>
-          <select
-            required
-            value={formData.factory}
-            onChange={(e) => handleInputChange("factory", e.target.value)}
-            className="w-full border border-blue-200 rounded-lg px-3 md:px-4 py-2 md:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm md:text-base"
-          >
-            <option value="">工場を選択</option>
-            {factories.map(f => <option key={f.id} value={f.id}>{f.factory_name}</option>)}
-          </select>
+      {/* 保管場所（階層選択） */}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-gray-700 text-sm md:text-base">保管場所 *</h3>
+        
+        <div className="grid gap-4 md:gap-6 md:grid-cols-3">
+          {/* 工場選択 */}
+          <div>
+            <label className="block mb-2 font-medium text-gray-600 text-sm">工場 *</label>
+            <select
+              required
+              value={formData.factory}
+              onChange={(e) => {
+                handleInputChange("factory", e.target.value);
+                handleInputChange("warehouse", ""); // 工場変更時は倉庫をリセット
+                handleInputChange("storing_place", ""); // 置き場もリセット
+              }}
+              className="w-full border border-blue-200 rounded-lg px-3 md:px-4 py-2 md:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm md:text-base"
+            >
+              <option value="">工場を選択</option>
+              {factories.map(f => <option key={f.id} value={f.id}>{f.factory_name}</option>)}
+            </select>
+          </div>
+
+          {/* 倉庫選択 */}
+          <div>
+            <label className="block mb-2 font-medium text-gray-600 text-sm">倉庫</label>
+            <select
+              value={formData.warehouse}
+              onChange={(e) => {
+                handleInputChange("warehouse", e.target.value);
+                handleInputChange("storing_place", ""); // 倉庫変更時は置き場をリセット
+              }}
+              disabled={!formData.factory}
+              className="w-full border border-blue-200 rounded-lg px-3 md:px-4 py-2 md:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm md:text-base disabled:bg-gray-100"
+            >
+              <option value="">倉庫を選択</option>
+              {warehouses
+                .filter(w => w.factory.toString() === formData.factory)
+                .map(w => <option key={w.id} value={w.id}>{w.warehouse_name}</option>)
+              }
+            </select>
+          </div>
+
+          {/* 置き場選択 */}
+          <div>
+            <label className="block mb-2 font-medium text-gray-600 text-sm">置き場</label>
+            <select
+              value={formData.storing_place}
+              onChange={(e) => handleInputChange("storing_place", e.target.value)}
+              disabled={!formData.warehouse}
+              className="w-full border border-blue-200 rounded-lg px-3 md:px-4 py-2 md:py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900 text-sm md:text-base disabled:bg-gray-100"
+            >
+              <option value="">置き場を選択</option>
+              {storageLocations
+                .filter(s => s.warehouse.toString() === formData.warehouse)
+                .map((s, index) => {
+                  const alphabetName = String.fromCharCode(65 + index);
+                  return <option key={s.id} value={s.location_name}>{alphabetName} ({s.location_name})</option>;
+                })
+              }
+            </select>
+          </div>
         </div>
       </div>
 

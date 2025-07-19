@@ -5,8 +5,12 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import Inventory, Factory, StockMovement, Stocktaking, Manager
-from .serializers import InventorySerializer, StockMovementSerializer, StocktakingSerializer, FactorySerializer, LoginSerializer, ManagerSerializer
+from .models import Inventory, Factory, StockMovement, Stocktaking, Manager, Warehouse, StorageLocation, StorageArea, Coordinate, SelectionOption
+from .serializers import (
+    InventorySerializer, StockMovementSerializer, StocktakingSerializer, 
+    FactorySerializer, LoginSerializer, ManagerSerializer, WarehouseSerializer, 
+    StorageLocationSerializer, StorageAreaSerializer, CoordinateSerializer, SelectionOptionSerializer
+)
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
 
@@ -433,10 +437,447 @@ class StocktakingListView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FactoryListView(APIView):
+    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    
     def get(self, request):
         """工場一覧を取得"""
         user = request.user
         
-        factories = user.managed_factories
+        print(f"FactoryListView - ユーザー認証状態: {user.is_authenticated}")
+        print(f"FactoryListView - ユーザー: {user}")
+        
+        # 開発用: 認証されていない場合は全ての工場を返す
+        if not user.is_authenticated:
+            factories = Factory.objects.all()
+            print(f"FactoryListView - 認証なし: {factories.count()}件の工場を返す")
+        else:
+            factories = user.managed_factories
+            print(f"FactoryListView - 認証あり: {factories.count()}件の工場を返す")
+        
         serializer = FactorySerializer(factories, many=True)
+        print(f"FactoryListView - シリアライズ結果: {len(serializer.data)}件")
         return Response(serializer.data)
+
+class WarehouseListView(APIView):
+    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    
+    def get(self, request):
+        """倉庫一覧を取得"""
+        user = request.user
+        
+        print(f"WarehouseListView - ユーザー認証状態: {user.is_authenticated}")
+        print(f"WarehouseListView - ユーザー: {user}")
+        
+        # 開発用: 認証されていない場合は全ての保管エリアを返す
+        if not user.is_authenticated:
+            warehouses = Warehouse.objects.all()
+            print(f"WarehouseListView - 認証なし: {warehouses.count()}件の保管エリアを返す")
+        else:
+            warehouses = Warehouse.objects.filter(factory__in=user.managed_factories)
+            print(f"WarehouseListView - 認証あり: {warehouses.count()}件の保管エリアを返す")
+        
+        serializer = WarehouseSerializer(warehouses, many=True)
+        print(f"WarehouseListView - シリアライズ結果: {len(serializer.data)}件")
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """新しい倉庫を作成"""
+        user = request.user
+        
+        serializer = WarehouseSerializer(data=request.data)
+        if serializer.is_valid():
+            # 指定された工場がユーザーの管理下にあるかチェック
+            factory = serializer.validated_data.get('factory')
+            if not user.is_factory_manager(factory):
+                return Response({"error": "指定された工場にアクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class WarehouseDetailView(APIView):
+    def get(self, request, pk):
+        """倉庫詳細を取得"""
+        user = request.user
+        
+        warehouse = get_object_or_404(Warehouse, pk=pk)
+        if not user.is_factory_manager(warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = WarehouseSerializer(warehouse)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """倉庫を更新"""
+        user = request.user
+        
+        warehouse = get_object_or_404(Warehouse, pk=pk)
+        if not user.is_factory_manager(warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = WarehouseSerializer(warehouse, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """倉庫を削除"""
+        user = request.user
+        
+        warehouse = get_object_or_404(Warehouse, pk=pk)
+        if not user.is_factory_manager(warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        warehouse.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class StorageLocationListView(APIView):
+    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    
+    def get(self, request):
+        """置き場一覧を取得"""
+        user = request.user
+        warehouse_id = request.query_params.get('warehouse_id')
+        
+        # 開発用: 認証されていない場合は全ての置き場を返す
+        if not user.is_authenticated:
+            queryset = StorageLocation.objects.all()
+        else:
+            queryset = StorageLocation.objects.filter(warehouse__factory__in=user.managed_factories)
+        
+        if warehouse_id:
+            queryset = queryset.filter(warehouse_id=warehouse_id)
+        
+        serializer = StorageLocationSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """新しい置き場を作成"""
+        user = request.user
+        
+        # 開発用: 認証されていない場合はテストユーザーとして扱う
+        if not user.is_authenticated:
+            from .models import Account
+            try:
+                user = Account.objects.get(id="test_admin")
+            except Account.DoesNotExist:
+                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        serializer = StorageLocationSerializer(data=request.data)
+        if serializer.is_valid():
+            # 指定された倉庫がユーザーの管理下にあるかチェック
+            warehouse = serializer.validated_data.get('warehouse')
+            if not user.is_factory_manager(warehouse.factory):
+                return Response({"error": "指定された倉庫にアクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+            
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class StorageLocationDetailView(APIView):
+    def get(self, request, pk):
+        """置き場詳細を取得"""
+        user = request.user
+        
+        storage_location = get_object_or_404(StorageLocation, pk=pk)
+        if not user.is_factory_manager(storage_location.warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = StorageLocationSerializer(storage_location)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """置き場を更新"""
+        user = request.user
+        
+        # 開発用: 認証されていない場合はテストユーザーとして扱う
+        if not user.is_authenticated:
+            from .models import Account
+            try:
+                user = Account.objects.get(id="test_admin")
+            except Account.DoesNotExist:
+                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        storage_location = get_object_or_404(StorageLocation, pk=pk)
+        if not user.is_factory_manager(storage_location.warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = StorageLocationSerializer(storage_location, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """置き場を削除"""
+        user = request.user
+        
+        # 開発用: 認証されていない場合はテストユーザーとして扱う
+        if not user.is_authenticated:
+            from .models import Account
+            try:
+                user = Account.objects.get(id="test_admin")
+            except Account.DoesNotExist:
+                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        storage_location = get_object_or_404(StorageLocation, pk=pk)
+        if not user.is_factory_manager(storage_location.warehouse.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        storage_location.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+# 新しい置き場システム用API
+class StorageAreaListView(APIView):
+    permission_classes = [AllowAny]  # テスト用
+    
+    def get(self, request):
+        """置き場一覧を取得"""
+        user = request.user
+        factory_id = request.query_params.get('factory_id')
+        
+        # テスト用: 認証されていない場合は全ての置き場を返す
+        if not user.is_authenticated:
+            queryset = StorageArea.objects.all()
+        else:
+            queryset = StorageArea.objects.filter(factory__in=user.managed_factories)
+        
+        if factory_id:
+            queryset = queryset.filter(factory_id=factory_id)
+        
+        serializer = StorageAreaSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """新しい置き場を作成"""
+        user = request.user
+        
+        # 開発用: 認証されていない場合はテストユーザーとして扱う
+        if not user.is_authenticated:
+            from .models import Account
+            try:
+                user = Account.objects.get(id="test_admin")
+            except Account.DoesNotExist:
+                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        serializer = StorageAreaSerializer(data=request.data)
+        if serializer.is_valid():
+            # 指定された工場がユーザーの管理下にあるかチェック
+            factory = serializer.validated_data.get('factory')
+            if not user.is_factory_manager(factory):
+                return Response({"error": "指定された工場にアクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+            
+            # 置き場を保存
+            storage_area = serializer.save()
+            
+            # 座標を自動生成
+            coordinates = []
+            for x in range(1, storage_area.width + 1):
+                for y in range(1, storage_area.height + 1):
+                    coordinate = Coordinate.objects.create(
+                        storage_area=storage_area,
+                        x_position=x,
+                        y_position=y
+                    )
+                    coordinates.append(coordinate)
+            
+            # レスポンス用に座標も含めて返す
+            result_serializer = StorageAreaSerializer(storage_area)
+            return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class StorageAreaDetailView(APIView):
+    permission_classes = [AllowAny]  # テスト用
+    
+    def get(self, request, pk):
+        """置き場詳細を取得"""
+        user = request.user
+        storage_area = get_object_or_404(StorageArea, pk=pk)
+        
+        # テスト用: 認証されていない場合は権限チェックをスキップ
+        if user.is_authenticated and not user.is_factory_manager(storage_area.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = StorageAreaSerializer(storage_area)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """置き場を更新"""
+        user = request.user
+        storage_area = get_object_or_404(StorageArea, pk=pk)
+        
+        if not user.is_factory_manager(storage_area.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = StorageAreaSerializer(storage_area, data=request.data, partial=True)
+        if serializer.is_valid():
+            # サイズが変更された場合は座標を再生成
+            old_width = storage_area.width
+            old_height = storage_area.height
+            
+            storage_area = serializer.save()
+            
+            if old_width != storage_area.width or old_height != storage_area.height:
+                # 既存の座標を削除して再生成
+                storage_area.coordinate_set.all().delete()
+                for x in range(1, storage_area.width + 1):
+                    for y in range(1, storage_area.height + 1):
+                        Coordinate.objects.create(
+                            storage_area=storage_area,
+                            x_position=x,
+                            y_position=y
+                        )
+            
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """置き場を削除"""
+        user = request.user
+        
+        # 開発用: 認証されていない場合はテストユーザーとして扱う
+        if not user.is_authenticated:
+            from .models import Account
+            try:
+                user = Account.objects.get(id="test_admin")
+            except Account.DoesNotExist:
+                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        storage_area = get_object_or_404(StorageArea, pk=pk)
+        if not user.is_factory_manager(storage_area.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        storage_area.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class CoordinateListView(APIView):
+    permission_classes = [AllowAny]  # テスト用
+    
+    def get(self, request):
+        """座標一覧を取得"""
+        user = request.user
+        storage_area_id = request.query_params.get('storage_area_id')
+        
+        # テスト用: 認証されていない場合は全ての座標を返す
+        if not user.is_authenticated:
+            queryset = Coordinate.objects.all()
+        else:
+            queryset = Coordinate.objects.filter(storage_area__factory__in=user.managed_factories)
+        
+        if storage_area_id:
+            queryset = queryset.filter(storage_area_id=storage_area_id)
+        
+        serializer = CoordinateSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
+
+class CoordinateDetailView(APIView):
+    permission_classes = [AllowAny]  # テスト用
+    
+    def get(self, request, pk):
+        """座標詳細を取得"""
+        user = request.user
+        coordinate = get_object_or_404(Coordinate, pk=pk)
+        
+        # テスト用: 認証されていない場合は権限チェックをスキップ
+        if user.is_authenticated and not user.is_factory_manager(coordinate.storage_area.factory):
+            return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = CoordinateSerializer(coordinate, context={'request': request})
+        return Response(serializer.data)
+
+# 選択情報管理用API
+class SelectionOptionListView(APIView):
+    """選択肢一覧・作成API"""
+    
+    def get(self, request):
+        """選択肢一覧を取得"""
+        option_type = request.query_params.get('type')
+        
+        queryset = SelectionOption.objects.filter(is_active=True)
+        if option_type:
+            queryset = queryset.filter(option_type=option_type)
+        
+        serializer = SelectionOptionSerializer(queryset, many=True)
+        return Response(serializer.data)
+    
+    def post(self, request):
+        """新しい選択肢を作成"""
+        user = request.user
+        
+        if not user.is_staff:
+            return Response({
+                'error': '管理者権限が必要です'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = SelectionOptionSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SelectionOptionDetailView(APIView):
+    """選択肢詳細・更新・削除API"""
+    
+    def get(self, request, pk):
+        """特定の選択肢を取得"""
+        selection_option = get_object_or_404(SelectionOption, pk=pk)
+        serializer = SelectionOptionSerializer(selection_option)
+        return Response(serializer.data)
+    
+    def put(self, request, pk):
+        """選択肢を更新"""
+        user = request.user
+        
+        if not user.is_staff:
+            return Response({
+                'error': '管理者権限が必要です'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        selection_option = get_object_or_404(SelectionOption, pk=pk)
+        serializer = SelectionOptionSerializer(selection_option, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, pk):
+        """選択肢を削除（論理削除）"""
+        user = request.user
+        
+        if not user.is_staff:
+            return Response({
+                'error': '管理者権限が必要です'
+            }, status=status.HTTP_403_FORBIDDEN)
+        
+        selection_option = get_object_or_404(SelectionOption, pk=pk)
+        selection_option.is_active = False
+        selection_option.save()
+        
+        return Response({'message': '選択肢を削除しました'}, status=status.HTTP_204_NO_CONTENT)
+
+class SelectionOptionsView(APIView):
+    """選択肢の種類別一括取得API"""
+    
+    def get(self, request):
+        """カテゴリー、発注先、単位の一覧を一括取得"""
+        categories = SelectionOption.objects.filter(
+            option_type='category', 
+            is_active=True
+        ).values_list('value', flat=True)
+        
+        suppliers = SelectionOption.objects.filter(
+            option_type='supplier', 
+            is_active=True
+        ).values_list('value', flat=True)
+        
+        units = SelectionOption.objects.filter(
+            option_type='unit', 
+            is_active=True
+        ).values_list('value', flat=True)
+        
+        return Response({
+            'categories': list(categories),
+            'suppliers': list(suppliers),
+            'units': list(units)
+        })

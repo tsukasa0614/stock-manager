@@ -17,7 +17,6 @@ import {
   FaSearch,
   FaCalendarAlt
 } from "react-icons/fa";
-import { useAuth } from "../contexts/AuthContext";
 
 // 棚卸データの型定義
 interface InventoryItem {
@@ -67,7 +66,6 @@ const Stocktaking: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { user } = useAuth();
 
   // 統計データ
   const stats = {

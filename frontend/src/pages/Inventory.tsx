@@ -6,7 +6,7 @@ import { Badge } from "../components/ui/badge";
 import { ResponsiveTable } from "../components/ui/responsive-table";
 import { AdvancedFilterPanel } from "../components/inventory/AdvancedFilterPanel";
 import { AlertBanner } from "../components/alerts/AlertBanner";
-import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar, FaEdit, FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
+import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar, FaEdit, FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter, FaPlus, FaTrash } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import { useAlert } from "../contexts/AlertContext";
 import { apiClient, type InventoryItem, type StockMovement, type Factory } from "../api/client";
@@ -38,6 +38,14 @@ const adminMenuItems = [
     label: "商品登録",
     description: "新しい商品の登録・編集・削除",
     icon: <FaBoxOpen />,
+    color: "from-blue-400 via-indigo-500 to-blue-600",
+    hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
+  },
+  {
+    key: "selection-config",
+    label: "選択情報管理",
+    description: "カテゴリー・発注先・単位の管理",
+    icon: <FaEdit />,
     color: "from-blue-400 via-indigo-500 to-blue-600",
     hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
   }
@@ -72,13 +80,27 @@ const userMenuItems = [
 ];
 
 const Inventory: React.FC = () => {
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null); // デフォルトで機能選択画面を表示
   const [previousScreen, setPreviousScreen] = useState<string | null>(null);
   const [inventoryList, setInventoryList] = useState<InventoryItem[]>([]);
   const [factories, setFactories] = useState<Factory[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null); // 詳細表示用
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // 選択情報管理用の状態
+  const [selectionOptions, setSelectionOptions] = useState({
+    categories: ["食品", "飲料", "日用品", "電化製品", "家具", "衣類", "文房具", "その他", "消耗品"],
+    suppliers: ["仕入先A", "仕入先B"],
+    units: ["個", "箱", "袋", "本", "kg", "g", "L", "mL", "m", "cm", "セット"]
+  });
+  
+  // 選択情報管理画面用の状態
+  const [activeTab, setActiveTab] = useState<'categories' | 'suppliers' | 'units'>('categories');
+  const [newItem, setNewItem] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState('');
   
   // フィルター状態の追加
   const [filters, setFilters] = useState<InventoryFilters>(initialFilters);
@@ -124,6 +146,8 @@ const Inventory: React.FC = () => {
     if (key === "register") {
       console.log('Inventory - Navigating to /inventory/register');
       navigate("/inventory/register");
+    } else if (key === "selection-config") {
+      setSelected("selection-config");
     } else if (key === "receiving") {
       setSelected("receiving");
     } else if (key === "shipping") {
@@ -636,17 +660,70 @@ const Inventory: React.FC = () => {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
-            <ResponsiveTable
-              data={filteredInventoryList}
-              columns={columns}
-              actions={actions}
-              keyField="id"
-              mobileCardTitle={(row) => row.product_name}
-              mobileCardSubtitle={(row) => `${row.item_code} | ${row.category}`}
-            />
+          <CardContent className="p-6">
+            {filteredInventoryList.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredInventoryList.map((item) => {
+                  const status = getInventoryStatus(item) as StockStatus;
+                  const statusConfig = STATUS_CONFIG[status];
+                  
+                  return (
+                    <Card 
+                      key={item.id} 
+                      className="border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer" 
+                      onClick={() => setSelectedItem(item)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          {/* 商品画像 */}
+                          <div className="flex-shrink-0">
+                            {item.image ? (
+                              <div className="w-16 h-16 bg-white rounded border overflow-hidden">
+                                <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-200 rounded border flex items-center justify-center">
+                                <FaBoxOpen className="text-gray-400 text-xl" />
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* 商品情報 */}
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-gray-900 truncate">{item.product_name}</h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              <span className={`font-bold ${item.stock_quantity <= item.lowest_stock ? 'text-red-600' : 'text-blue-900'}`}>
+                                {item.stock_quantity}
+                              </span>
+                              <span className="text-gray-500"> {item.unit}</span>
+                            </p>
+                            
+                            {/* ステータスバッジ */}
+                            <div className="mt-2">
+                              <Badge className={`${statusConfig.color} ${statusConfig.textColor} text-xs`}>
+                                {statusConfig.label}
+                              </Badge>
+                            </div>
+                            
+                            {/* クリック案内 */}
+                            <p className="text-xs text-blue-600 mt-2">クリックして詳細表示</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <FaBoxOpen className="text-gray-400 text-4xl mx-auto mb-4" />
+                <p className="text-gray-600">表示する在庫がありません</p>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+
       </div>
     );
   };
@@ -915,6 +992,182 @@ const Inventory: React.FC = () => {
     );
   }
 
+  // 選択情報管理画面のレンダリング
+  const renderSelectionConfig = () => {
+    const getCurrentList = () => {
+      return selectionOptions[activeTab];
+    };
+
+    const addItem = () => {
+      if (!newItem.trim()) return;
+      
+      setSelectionOptions(prev => ({
+        ...prev,
+        [activeTab]: [...prev[activeTab], newItem.trim()]
+      }));
+      setNewItem('');
+    };
+
+    const deleteItem = (index: number) => {
+      setSelectionOptions(prev => ({
+        ...prev,
+        [activeTab]: prev[activeTab].filter((_, i) => i !== index)
+      }));
+    };
+
+    const startEdit = (index: number, value: string) => {
+      setEditingIndex(index);
+      setEditingValue(value);
+    };
+
+    const saveEdit = () => {
+      if (!editingValue.trim() || editingIndex === null) return;
+      
+      setSelectionOptions(prev => ({
+        ...prev,
+        [activeTab]: prev[activeTab].map((item, i) => 
+          i === editingIndex ? editingValue.trim() : item
+        )
+      }));
+      setEditingIndex(null);
+      setEditingValue('');
+    };
+
+    const cancelEdit = () => {
+      setEditingIndex(null);
+      setEditingValue('');
+    };
+
+    const tabs = [
+      { key: 'categories' as const, label: 'カテゴリー', icon: '📂' },
+      { key: 'suppliers' as const, label: '発注先', icon: '🏪' },
+      { key: 'units' as const, label: '単位', icon: '📏' }
+    ];
+
+    return (
+      <Card className="shadow-xl bg-white border-0">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-blue-900 text-xl flex items-center gap-3">
+              <FaEdit className="text-blue-600" />
+              選択情報管理
+            </CardTitle>
+            <Button
+              onClick={() => setSelected(null)}
+              variant="outline"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <FaArrowLeft className="mr-2" />
+              戻る
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-6">
+          {/* タブナビゲーション */}
+          <div className="flex space-x-1 mb-6 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
+            {tabs.map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
+                  activeTab === tab.key
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span className="font-medium">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* 新規追加フォーム */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-gray-800 mb-3">新しい{tabs.find(t => t.key === activeTab)?.label}を追加</h3>
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && addItem()}
+                placeholder={`新しい${tabs.find(t => t.key === activeTab)?.label}を入力`}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <Button
+                onClick={addItem}
+                disabled={!newItem.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+              >
+                <FaPlus className="mr-1" />
+                追加
+              </Button>
+            </div>
+          </div>
+
+          {/* 既存項目一覧 */}
+          <div className="space-y-2">
+            <h3 className="font-medium text-gray-800 mb-3">
+              {tabs.find(t => t.key === activeTab)?.label}一覧 ({getCurrentList().length}件)
+            </h3>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {getCurrentList().map((item, index) => (
+                <div key={index} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
+                  {editingIndex === index ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                        className="flex-1 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        autoFocus
+                      />
+                      <Button
+                        onClick={saveEdit}
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white px-3"
+                      >
+                        保存
+                      </Button>
+                      <Button
+                        onClick={cancelEdit}
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-300 text-gray-600 hover:bg-gray-50 px-3"
+                      >
+                        キャンセル
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-gray-800">{item}</span>
+                      <Button
+                        onClick={() => startEdit(index, item)}
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-300 text-blue-600 hover:bg-blue-50 px-3"
+                      >
+                        <FaEdit className="text-xs" />
+                      </Button>
+                      <Button
+                        onClick={() => deleteItem(index)}
+                        variant="outline"
+                        size="sm"
+                        className="border-red-300 text-red-600 hover:bg-red-50 px-3"
+                      >
+                        <FaTrash className="text-xs" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="container mx-auto py-6 space-y-6">
@@ -966,9 +1219,150 @@ const Inventory: React.FC = () => {
               {!loading && !error && renderInventoryTable()}
             </>
           )}
+          
+          {/* 商品詳細表示（画面全体） */}
+          {selectedItem && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-green-100 border-b border-green-200 p-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-green-900 flex items-center gap-3">
+                      <FaEye className="text-green-600" />
+                      商品詳細情報
+                    </h2>
+                    <Button
+                      onClick={() => setSelectedItem(null)}
+                      variant="outline"
+                      className="border-green-300 text-green-700 hover:bg-green-50"
+                    >
+                      <FaArrowLeft className="mr-2" />
+                      閉じる
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* 左列：基本情報 */}
+                    <div className="space-y-6">
+                      <div className="flex items-start gap-6">
+                        {/* 商品画像 */}
+                        <div className="flex-shrink-0">
+                          {selectedItem.image ? (
+                            <div className="w-32 h-32 bg-white rounded-lg border overflow-hidden shadow-lg">
+                              <img src={selectedItem.image} alt={selectedItem.product_name} className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <div className="w-32 h-32 bg-gray-200 rounded-lg border flex items-center justify-center shadow-lg">
+                              <FaBoxOpen className="text-gray-400 text-4xl" />
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* 基本情報 */}
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-bold text-gray-900 mb-3">{selectedItem.product_name}</h3>
+                          <div className="space-y-3 text-base">
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 font-medium">商品コード:</span>
+                              <span className="font-mono text-blue-700 bg-blue-50 px-3 py-1 rounded-lg">{selectedItem.item_code}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-600 font-medium">カテゴリー:</span>
+                              <Badge className="bg-purple-100 text-purple-800 text-sm px-3 py-1">{selectedItem.category}</Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 在庫情報 */}
+                      <div className="bg-blue-50 rounded-xl p-6 border border-blue-200">
+                        <h4 className="font-bold text-blue-900 text-lg mb-4 flex items-center gap-2">
+                          📊 在庫情報
+                        </h4>
+                        <div className="space-y-4 text-base">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">現在在庫:</span>
+                            <span className={`font-bold text-lg ${selectedItem.stock_quantity <= selectedItem.lowest_stock ? 'text-red-600' : 'text-blue-900'}`}>
+                              {selectedItem.stock_quantity} {selectedItem.unit}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">最低在庫:</span>
+                            <span className="text-gray-800 font-medium">{selectedItem.lowest_stock} {selectedItem.unit}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">単位:</span>
+                            <span className="text-gray-800 font-medium">{selectedItem.unit}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">単価:</span>
+                            <span className="font-bold text-green-700 text-lg">¥{selectedItem.unit_price}</span>
+                          </div>
+                          {selectedItem.supplier && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-700 font-medium">発注先:</span>
+                              <span className="text-gray-800 font-medium">{selectedItem.supplier}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 右列：保管場所・その他 */}
+                    <div className="space-y-6">
+                      {/* 保管場所 */}
+                      <div className="bg-orange-50 rounded-xl p-6 border border-orange-200">
+                        <h4 className="font-bold text-orange-900 text-lg mb-4 flex items-center gap-2">
+                          📍 保管場所
+                        </h4>
+                        <div className="space-y-4 text-base">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">工場:</span>
+                            <span className="text-gray-800 font-medium">{selectedItem.factory_name || '未設定'}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">置き場:</span>
+                            <span className="text-gray-800 font-medium">{selectedItem.storing_place || '未設定'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* メモ */}
+                      {selectedItem.memo && (
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                          <h4 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                            📝 メモ
+                          </h4>
+                          <p className="text-gray-700 leading-relaxed">{selectedItem.memo}</p>
+                        </div>
+                      )}
+                      
+                      {/* 更新情報 */}
+                      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <h4 className="font-bold text-gray-900 text-lg mb-4 flex items-center gap-2">
+                          📅 更新情報
+                        </h4>
+                        <div className="space-y-4 text-base">
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">作成日:</span>
+                            <span className="text-gray-800 font-medium">{new Date(selectedItem.created_at).toLocaleDateString('ja-JP')}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-700 font-medium">更新日:</span>
+                            <span className="text-gray-800 font-medium">{new Date(selectedItem.updated_at).toLocaleDateString('ja-JP')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {selected === "receiving" && renderStockMovementForm('in')}
           {selected === "shipping" && renderStockMovementForm('out')}
           {selected === "history" && renderMovementHistory()}
+          {selected === "selection-config" && renderSelectionConfig()}
           {selected === "locations" && (
             <Card className="shadow-xl bg-white border-0">
               <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200">

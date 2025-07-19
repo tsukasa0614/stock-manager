@@ -62,7 +62,131 @@ class Manager(models.Model):
     
     def __str__(self):
         return f"{self.user.id} - {self.factory.factory_name} ({self.get_role_display()})"
+
+# 倉庫テーブル
+class Warehouse(models.Model):
+    id = models.AutoField(primary_key=True)
+    warehouse_name = models.CharField(max_length=255, help_text="倉庫名")
+    factory = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="所属工場")
+    description = models.TextField(null=True, blank=True, help_text="説明")
+    width = models.IntegerField(default=10, help_text="マップ横幅（グリッド単位）")
+    height = models.IntegerField(default=10, help_text="マップ縦幅（グリッド単位）")
+    status = models.CharField(max_length=255, choices=[
+        ("active", "稼働中"),
+        ("inactive", "停止中"),
+        ("maintenance", "メンテナンス中")
+    ], default="active", help_text="倉庫ステータス")
     
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "倉庫"
+        verbose_name_plural = "倉庫"
+    
+    def __str__(self):
+        return f"{self.factory.factory_name} - {self.warehouse_name}"
+
+# 置き場テーブル（旧システム）
+class StorageLocation(models.Model):
+    id = models.AutoField(primary_key=True)
+    location_name = models.CharField(max_length=255, help_text="置き場名")
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.CASCADE, help_text="所属倉庫")
+    x_position = models.IntegerField(help_text="X座標（グリッド単位）")
+    y_position = models.IntegerField(help_text="Y座標（グリッド単位）")
+    width = models.IntegerField(default=1, help_text="置き場の横幅（グリッド単位）")
+    height = models.IntegerField(default=1, help_text="置き場の縦幅（グリッド単位）")
+    capacity = models.IntegerField(default=100, help_text="収容能力")
+    current_stock = models.IntegerField(default=0, help_text="現在の在庫数")
+    location_type = models.CharField(max_length=255, choices=[
+        ("entrance", "入口"),
+        ("square", "置き場四角"),
+        ("circle", "置き場丸"),
+        ("l_shape", "置き場L字"),
+        ("u_shape", "置き場コの字")
+    ], default="square", help_text="置き場タイプ")
+    status = models.CharField(max_length=255, choices=[
+        ("available", "利用可能"),
+        ("occupied", "使用中"),
+        ("maintenance", "メンテナンス中"),
+        ("reserved", "予約済み")
+    ], default="available", help_text="置き場ステータス")
+    memo = models.TextField(null=True, blank=True, help_text="メモ")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "置き場（旧）"
+        verbose_name_plural = "置き場（旧）"
+        unique_together = ['warehouse', 'x_position', 'y_position']  # 同じ倉庫内で座標の重複を防ぐ
+    
+    def __str__(self):
+        return f"{self.warehouse.warehouse_name} - {self.location_name} ({self.x_position}, {self.y_position})"
+    
+    @property
+    def utilization_rate(self):
+        """使用率を計算"""
+        if self.capacity == 0:
+            return 0.0
+        return (self.current_stock / self.capacity) * 100
+
+# 置き場テーブル（新システム）
+class StorageArea(models.Model):
+    id = models.AutoField(primary_key=True)
+    area_name = models.CharField(max_length=1, help_text="置き場名（A, B, C...）")
+    factory = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="所属工場")
+    width = models.IntegerField(default=3, help_text="置き場の横幅（座標数）")
+    height = models.IntegerField(default=3, help_text="置き場の縦幅（座標数）")
+    description = models.TextField(null=True, blank=True, help_text="説明")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "置き場（新）"
+        verbose_name_plural = "置き場（新）"
+        unique_together = ['factory', 'area_name']  # 同じ工場内でアルファベットの重複を防ぐ
+    
+    def __str__(self):
+        return f"{self.factory.factory_name} - {self.area_name}"
+    
+    @property
+    def total_coordinates(self):
+        """総座標数を取得"""
+        return self.width * self.height
+    
+    @property
+    def occupied_coordinates(self):
+        """使用中の座標数を取得"""
+        return self.coordinate_set.filter(inventory__isnull=False).count()
+
+# 座標テーブル（新システム）
+class Coordinate(models.Model):
+    id = models.AutoField(primary_key=True)
+    storage_area = models.ForeignKey(StorageArea, on_delete=models.CASCADE, help_text="所属置き場")
+    x_position = models.IntegerField(help_text="X座標（1, 2, 3...）")
+    y_position = models.IntegerField(help_text="Y座標（1, 2, 3...）")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "座標"
+        verbose_name_plural = "座標"
+        unique_together = ['storage_area', 'x_position', 'y_position']  # 同じ置き場内で座標の重複を防ぐ
+    
+    def __str__(self):
+        return f"{self.storage_area.area_name}-{self.x_position}-{self.y_position}"
+    
+    @property
+    def coordinate_name(self):
+        """座標名を取得（例：A-1-1）"""
+        return f"{self.storage_area.area_name}-{self.x_position}-{self.y_position}"
+    
+    @property
+    def position_name(self):
+        """位置名を取得（例：1-1）"""
+        return f"{self.x_position}-{self.y_position}"
+
 class Account(AbstractUser):
     id=models.CharField(max_length=255, primary_key=True,unique=True)
     email =models.EmailField(blank=True)
@@ -104,7 +228,9 @@ class Inventory(models.Model):
     lowest_stock = models.IntegerField(default=0, help_text="最低在庫数")
     unit = models.CharField(max_length=255, help_text="単位")
     unit_price = models.DecimalField(max_digits=10,decimal_places=2,default=0.00, help_text="単価")
-    storing_place = models.CharField(max_length=255,null=True,blank=True, help_text="保管場所")
+    supplier = models.CharField(max_length=255, null=True, blank=True, help_text="発注先")
+    storing_place = models.CharField(max_length=255,null=True,blank=True, help_text="保管場所（旧システム互換）")
+    coordinate = models.ForeignKey(Coordinate, on_delete=models.CASCADE, null=True, blank=True, help_text="保管座標（新システム）")
     memo = models.TextField(null=True,blank=True, help_text="メモ")
     factory = models.ForeignKey(Factory, on_delete=models.CASCADE, help_text="所属工場")
     
@@ -113,6 +239,13 @@ class Inventory(models.Model):
     
     def __str__(self):
         return f"{self.item_code} - {self.product_name}"
+    
+    @property
+    def storage_location_name(self):
+        """保管場所名を取得（新旧システム対応）"""
+        if self.coordinate:
+            return self.coordinate.coordinate_name  # A-1-1形式
+        return self.storing_place  # 旧システムの場所名
 
 #在庫移動
 class StockMovement(models.Model):
@@ -141,3 +274,26 @@ class Stocktaking(models.Model):
     memo = models.TextField(null=True,blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+# 選択情報管理用のモデル
+class SelectionOption(models.Model):
+    id = models.AutoField(primary_key=True)
+    option_type = models.CharField(max_length=50, choices=[
+        ('category', 'カテゴリー'),
+        ('supplier', '発注先'),
+        ('unit', '単位')
+    ], help_text="選択肢の種類")
+    value = models.CharField(max_length=255, help_text="選択肢の値")
+    is_active = models.BooleanField(default=True, help_text="有効/無効")
+    sort_order = models.IntegerField(default=0, help_text="表示順序")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "選択肢"
+        verbose_name_plural = "選択肢"
+        unique_together = ['option_type', 'value']  # 同じ種類内で値の重複を防ぐ
+        ordering = ['option_type', 'sort_order', 'value']
+    
+    def __str__(self):
+        return f"{self.get_option_type_display()}: {self.value}"
