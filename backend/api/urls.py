@@ -1,11 +1,12 @@
 from django.urls import path
 from . import views
+from .views import auth_views
 
 urlpatterns = [
     # 認証
-    path('login/', views.LoginView.as_view(), name='login'),
-    path('admin/login/', views.AdminLoginView.as_view(), name='admin_login'),
-    path('user/login/', views.UserLoginView.as_view(), name='user_login'),
+    path('login/', auth_views.LoginView.as_view(), name='login'),
+    path('admin/login/', auth_views.AdminLoginView.as_view(), name='admin_login'),
+    path('user/login/', auth_views.UserLoginView.as_view(), name='user_login'),
     
     # 工場管理者
     path('managers/', views.ManagerListView.as_view(), name='manager_list'),

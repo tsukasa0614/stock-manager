@@ -90,59 +90,119 @@ const Factories: React.FC = () => {
     setSelectedLocationId(null);
   };
 
-  // 工場データを取得
-  const fetchFactories = async () => {
+  // 全データを一括取得
+  const loadAllData = async () => {
     try {
-      const response = await apiClient.getFactories();
+      setLoading(true);
+      setError(null);
       
-      if (response.error) {
-        console.error('工場データの取得に失敗:', response.error);
+      // 全てのデータを並行取得
+      const [factoriesRes, warehousesRes, managersRes, inventoryRes] = await Promise.all([
+        apiClient.getFactories(),
+        apiClient.getWarehouses(),
+        apiClient.getManagers(),
+        apiClient.getInventories()
+      ]);
+
+      // エラーハンドリング
+      if (factoriesRes.error) {
         setError('工場データの取得に失敗しました');
-      } else if (response.data) {
+        setLoading(false);
+        return;
+      }
+
+      if (warehousesRes.error) {
+        console.error('倉庫データの取得に失敗:', warehousesRes.error);
+      }
+
+      if (managersRes.error) {
+        console.error('管理者データの取得に失敗:', managersRes.error);
+      }
+
+      if (inventoryRes.error) {
+        console.error('在庫データの取得に失敗:', inventoryRes.error);
+      }
+
+      // 工場データの処理
+      if (factoriesRes.data) {
+        // 倉庫データから工場ごとの倉庫数を計算
+        const warehouseCounts: Record<number, number> = {};
+        if (warehousesRes.data) {
+          warehousesRes.data.forEach(warehouse => {
+            warehouseCounts[warehouse.factory] = (warehouseCounts[warehouse.factory] || 0) + 1;
+          });
+        }
+
+        // 管理者データから工場ごとの管理者を取得
+        const factoryManagers: Record<number, string> = {};
+        if (managersRes.data) {
+          managersRes.data.forEach(manager => {
+            if (manager.is_active && manager.role === 'primary') {
+              factoryManagers[manager.factory] = manager.user_name;
+            }
+          });
+        }
+
         // 工場データを拡張フォーマットに変換
-        const extendedFactories: ExtendedFactory[] = response.data.map(factory => ({
+        const extendedFactories: ExtendedFactory[] = factoriesRes.data.map(factory => ({
           ...factory,
-          warehouseCount: 2, // 暫定値
-          totalShelfCount: 25, // 暫定値  
-          manager: '管理者未設定' // 暫定値
+          warehouseCount: warehouseCounts[factory.id] || 0,
+          totalShelfCount: 0, // 後で倉庫データから計算
+          manager: factoryManagers[factory.id] || '管理者未設定'
         }));
+
+        // 倉庫データから総棚数を計算
+        if (warehousesRes.data) {
+          const totalShelfCounts: Record<number, number> = {};
+          warehousesRes.data.forEach(warehouse => {
+            totalShelfCounts[warehouse.factory] = (totalShelfCounts[warehouse.factory] || 0) + (warehouse.total_locations || 0);
+          });
+          
+          extendedFactories.forEach(factory => {
+            factory.totalShelfCount = totalShelfCounts[factory.id] || 0;
+          });
+        }
+
         setFactories(extendedFactories);
       }
-      setLoading(false);
-    } catch (err) {
-      console.error('工場データの取得に失敗:', err);
-      setError('工場データの取得に失敗しました');
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchFactories();
-  }, []);
+      // 倉庫データの処理
+      if (warehousesRes.data) {
+        // 管理者データから倉庫ごとの管理者を取得
+        const warehouseManagers: Record<number, string> = {};
+        if (managersRes.data) {
+          managersRes.data.forEach(manager => {
+            if (manager.is_active && manager.role === 'primary') {
+              warehouseManagers[manager.factory] = manager.user_name;
+            }
+          });
+        }
 
-  // 保管エリアデータを取得
-  const fetchWarehouses = async () => {
-    try {
-      const response = await apiClient.getWarehouses();
-      
-      if (response.error) {
-        console.error('保管エリアデータの取得に失敗:', response.error);
-      } else if (response.data) {
-        const extendedWarehouses: ExtendedWarehouse[] = response.data.map(warehouse => ({
+        const extendedWarehouses: ExtendedWarehouse[] = warehousesRes.data.map(warehouse => ({
           ...warehouse,
           shelfCount: warehouse.total_locations || 0,
           totalItems: warehouse.occupied_locations || 0,
-          manager: '管理者未設定' // 暫定値
+          manager: warehouseManagers[warehouse.factory] || '管理者未設定'
         }));
         setWarehouses(extendedWarehouses);
       }
+
+      // 在庫データの処理
+      if (inventoryRes.data) {
+        setInventoryItems(inventoryRes.data);
+      }
+
+      setLoading(false);
     } catch (err) {
-      console.error('保管エリアデータの取得に失敗:', err);
+      console.error('データの取得に失敗:', err);
+      setError('データの取得に失敗しました');
+      setLoading(false);
     }
   };
 
+  // コンポーネントマウント時に全データを取得
   useEffect(() => {
-    fetchWarehouses();
+    loadAllData();
   }, []);
 
   // 置き場データを取得
@@ -159,30 +219,6 @@ const Factories: React.FC = () => {
       console.error('置き場データの取得に失敗:', err);
     }
   };
-
-  // 在庫データを取得
-  const fetchInventoryItems = async () => {
-    try {
-      const response = await apiClient.getInventories();
-      
-      if (response.error) {
-        console.error('在庫データの取得に失敗:', response.error);
-      } else if (response.data) {
-        setInventoryItems(response.data);
-      }
-    } catch (err) {
-      console.error('在庫データの取得に失敗:', err);
-    }
-  };
-
-  // コンポーネントマウント時にデータを取得
-  useEffect(() => {
-    fetchInventoryItems();
-  }, []);
-
-
-
-
 
   // ステータス色を取得
   const getStatusColor = (status: string) => {
@@ -208,37 +244,52 @@ const Factories: React.FC = () => {
     }
   };
 
+  // データを再読み込み
+  const handleRefresh = () => {
+    loadAllData();
+  };
 
+  // エラー表示
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-200">
+        <div className="container mx-auto py-6 space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+            <div className="text-center">
+              <div className="text-red-500 text-6xl mb-4">⚠️</div>
+              <h1 className="text-2xl font-bold text-gray-800 mb-4">データの読み込みに失敗しました</h1>
+              <p className="text-gray-600 mb-6">{error}</p>
+              <Button
+                onClick={handleRefresh}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
+              >
+                再読み込み
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-
+  // ローディング表示
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-200">
+        <div className="container mx-auto py-6 space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-2xl border border-white/20 p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
+              <p className="text-lg text-gray-600">工場データを読み込み中...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 工場概要ビューのレンダリング
   const renderOverview = () => {
-    if (loading) {
-      return (
-        <Card className="shadow-xl bg-white border-0">
-          <CardContent className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">工場データを読み込み中...</p>
-          </CardContent>
-        </Card>
-      );
-    }
-
-    if (error) {
-      return (
-        <Card className="shadow-xl bg-white border-0">
-          <CardContent className="p-8 text-center">
-            <div className="text-red-500 text-4xl mb-4">⚠️</div>
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={() => window.location.reload()} className="bg-red-600 hover:bg-red-700 text-white">
-              再読み込み
-            </Button>
-          </CardContent>
-        </Card>
-      );
-    }
-
     return (
       <div className="space-y-6">
         {/* 統計カード */}
