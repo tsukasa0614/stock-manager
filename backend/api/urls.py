@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import auth_views
+from .views import auth_views,factory_views
 
 urlpatterns = [
     # 認証
@@ -23,19 +23,19 @@ urlpatterns = [
     path('stocktakings/', views.StocktakingListView.as_view(), name='stocktaking_list'),
     
     # 工場
-    path('factories/', views.FactoryListView.as_view(), name='factory_list'),
+    path('factories/', factory_views.FactoryListView.as_view(), name='factory_list'),
     
     # 倉庫（旧システム）
-    path('warehouses/', views.WarehouseListView.as_view(), name='warehouse_list'),
-    path('warehouses/<int:pk>/', views.WarehouseDetailView.as_view(), name='warehouse_detail'),
+    path('warehouses/', factory_views.WarehouseListView.as_view(), name='warehouse_list'),
+    path('warehouses/<int:pk>/', factory_views.WarehouseDetailView.as_view(), name='warehouse_detail'),
     
     # 置き場（旧システム）
-    path('storage-locations/', views.StorageLocationListView.as_view(), name='storage_location_list'),
-    path('storage-locations/<int:pk>/', views.StorageLocationDetailView.as_view(), name='storage_location_detail'),
+    path('storage-locations/', factory_views.StorageLocationListView.as_view(), name='storage_location_list'),
+    path('storage-locations/<int:pk>/', factory_views.StorageLocationDetailView.as_view(), name='storage_location_detail'),
     
     # 置き場（新システム）
-    path('storage-areas/', views.StorageAreaListView.as_view(), name='storage_area_list'),
-    path('storage-areas/<int:pk>/', views.StorageAreaDetailView.as_view(), name='storage_area_detail'),
+    path('storage-areas/', factory_views.StorageAreaListView.as_view(), name='storage_area_list'),
+    path('storage-areas/<int:pk>/', factory_views.StorageAreaDetailView.as_view(), name='storage_area_detail'),
     
     # 座標（新システム）
     path('coordinates/', views.CoordinateListView.as_view(), name='coordinate_list'),
