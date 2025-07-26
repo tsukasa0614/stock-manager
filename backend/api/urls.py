@@ -40,8 +40,5 @@ urlpatterns = [
     path('coordinates/', views.CoordinateListView.as_view(), name='coordinate_list'),
     path('coordinates/<int:pk>/', views.CoordinateDetailView.as_view(), name='coordinate_detail'),
     
-    # 選択情報管理
-    path('selection-options/', views.SelectionOptionListView.as_view(), name='selection_option_list'),
-    path('selection-options/<int:pk>/', views.SelectionOptionDetailView.as_view(), name='selection_option_detail'),
-    path('selection-options/all/', views.SelectionOptionsView.as_view(), name='selection_options_all'),
+
 ] 

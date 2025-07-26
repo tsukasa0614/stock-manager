@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
-from .models import Inventory, StockMovement, Stocktaking, Factory, Manager, Warehouse, StorageLocation, StorageArea, Coordinate, SelectionOption
+from .models import Inventory, StockMovement, Stocktaking, Factory, Manager, Warehouse, StorageLocation, StorageArea, Coordinate
 
 class LoginSerializer(serializers.Serializer):
     id = serializers.CharField()
@@ -176,36 +176,3 @@ class StorageAreaSerializer(serializers.ModelSerializer):
             return 0.0
         return (obj.occupied_coordinates / obj.total_coordinates) * 100
 
-# 選択情報管理用シリアライザー
-class SelectionOptionSerializer(serializers.ModelSerializer):
-    option_type_display = serializers.CharField(source='get_option_type_display', read_only=True)
-    
-    class Meta:
-        model = SelectionOption
-        fields = '__all__'
-        read_only_fields = ['created_at', 'updated_at']
-    
-    def validate(self, data):
-        """バリデーション: 同じ種類内で値の重複をチェック"""
-        option_type = data.get('option_type')
-        value = data.get('value')
-        
-        # 更新時は自分自身を除外
-        instance = self.instance
-        if instance:
-            existing = SelectionOption.objects.filter(
-                option_type=option_type, 
-                value=value
-            ).exclude(id=instance.id)
-        else:
-            existing = SelectionOption.objects.filter(
-                option_type=option_type, 
-                value=value
-            )
-        
-        if existing.exists():
-            raise serializers.ValidationError(
-                f"この{instance.get_option_type_display() if instance else '選択肢'}は既に存在します"
-            )
-        
-        return data

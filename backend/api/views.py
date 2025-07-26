@@ -5,11 +5,11 @@ from rest_framework.views import APIView
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from .models import Inventory, Factory, StockMovement, Stocktaking, Manager, Warehouse, StorageLocation, StorageArea, Coordinate, SelectionOption
+from .models import Inventory, Factory, StockMovement, Stocktaking, Manager, Warehouse, StorageLocation, StorageArea, Coordinate
 from .serializers import (
     InventorySerializer, StockMovementSerializer, StocktakingSerializer, 
     FactorySerializer, LoginSerializer, ManagerSerializer, WarehouseSerializer, 
-    StorageLocationSerializer, StorageAreaSerializer, CoordinateSerializer, SelectionOptionSerializer
+    StorageLocationSerializer, StorageAreaSerializer, CoordinateSerializer
 )
 from rest_framework.permissions import AllowAny
 from rest_framework.authtoken.models import Token
@@ -786,98 +786,3 @@ class CoordinateDetailView(APIView):
         serializer = CoordinateSerializer(coordinate, context={'request': request})
         return Response(serializer.data)
 
-# 選択情報管理用API
-class SelectionOptionListView(APIView):
-    """選択肢一覧・作成API"""
-    
-    def get(self, request):
-        """選択肢一覧を取得"""
-        option_type = request.query_params.get('type')
-        
-        queryset = SelectionOption.objects.filter(is_active=True)
-        if option_type:
-            queryset = queryset.filter(option_type=option_type)
-        
-        serializer = SelectionOptionSerializer(queryset, many=True)
-        return Response(serializer.data)
-    
-    def post(self, request):
-        """新しい選択肢を作成"""
-        user = request.user
-        
-        if not user.is_staff:
-            return Response({
-                'error': '管理者権限が必要です'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        serializer = SelectionOptionSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-class SelectionOptionDetailView(APIView):
-    """選択肢詳細・更新・削除API"""
-    
-    def get(self, request, pk):
-        """特定の選択肢を取得"""
-        selection_option = get_object_or_404(SelectionOption, pk=pk)
-        serializer = SelectionOptionSerializer(selection_option)
-        return Response(serializer.data)
-    
-    def put(self, request, pk):
-        """選択肢を更新"""
-        user = request.user
-        
-        if not user.is_staff:
-            return Response({
-                'error': '管理者権限が必要です'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        selection_option = get_object_or_404(SelectionOption, pk=pk)
-        serializer = SelectionOptionSerializer(selection_option, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    def delete(self, request, pk):
-        """選択肢を削除（論理削除）"""
-        user = request.user
-        
-        if not user.is_staff:
-            return Response({
-                'error': '管理者権限が必要です'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        selection_option = get_object_or_404(SelectionOption, pk=pk)
-        selection_option.is_active = False
-        selection_option.save()
-        
-        return Response({'message': '選択肢を削除しました'}, status=status.HTTP_204_NO_CONTENT)
-
-class SelectionOptionsView(APIView):
-    """選択肢の種類別一括取得API"""
-    
-    def get(self, request):
-        """カテゴリー、発注先、単位の一覧を一括取得"""
-        categories = SelectionOption.objects.filter(
-            option_type='category', 
-            is_active=True
-        ).values_list('value', flat=True)
-        
-        suppliers = SelectionOption.objects.filter(
-            option_type='supplier', 
-            is_active=True
-        ).values_list('value', flat=True)
-        
-        units = SelectionOption.objects.filter(
-            option_type='unit', 
-            is_active=True
-        ).values_list('value', flat=True)
-        
-        return Response({
-            'categories': list(categories),
-            'suppliers': list(suppliers),
-            'units': list(units)
-        })

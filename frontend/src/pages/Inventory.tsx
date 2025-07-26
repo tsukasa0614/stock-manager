@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { ResponsiveTable } from "../components/ui/responsive-table";
+
 import { AdvancedFilterPanel } from "../components/inventory/AdvancedFilterPanel";
 import { AlertBanner } from "../components/alerts/AlertBanner";
-import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar, FaEdit, FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter, FaPlus, FaTrash } from "react-icons/fa";
+import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar,  FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import { useAlert } from "../contexts/AlertContext";
 import { apiClient, type InventoryItem, type StockMovement, type Factory } from "../api/client";
@@ -41,14 +41,7 @@ const adminMenuItems = [
     color: "from-blue-400 via-indigo-500 to-blue-600",
     hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
   },
-  {
-    key: "selection-config",
-    label: "選択情報管理",
-    description: "カテゴリー・発注先・単位の管理",
-    icon: <FaEdit />,
-    color: "from-blue-400 via-indigo-500 to-blue-600",
-    hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
-  }
+
 ];
 
 // 一般ユーザー用メニューアイテム（日常業務系）
@@ -89,18 +82,7 @@ const Inventory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // 選択情報管理用の状態
-  const [selectionOptions, setSelectionOptions] = useState({
-    categories: ["食品", "飲料", "日用品", "電化製品", "家具", "衣類", "文房具", "その他", "消耗品"],
-    suppliers: ["仕入先A", "仕入先B"],
-    units: ["個", "箱", "袋", "本", "kg", "g", "L", "mL", "m", "cm", "セット"]
-  });
-  
-  // 選択情報管理画面用の状態
-  const [activeTab, setActiveTab] = useState<'categories' | 'suppliers' | 'units'>('categories');
-  const [newItem, setNewItem] = useState('');
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [editingValue, setEditingValue] = useState('');
+
   
   // フィルター状態の追加
   const [filters, setFilters] = useState<InventoryFilters>(initialFilters);
@@ -142,12 +124,8 @@ const Inventory: React.FC = () => {
   };
 
   const handleMenuClick = (key: string) => {
-    console.log('Inventory - Menu clicked:', key, 'User:', user, 'IsAdmin:', isAdmin);
     if (key === "register") {
-      console.log('Inventory - Navigating to /inventory/register');
       navigate("/inventory/register");
-    } else if (key === "selection-config") {
-      setSelected("selection-config");
     } else if (key === "receiving") {
       setSelected("receiving");
     } else if (key === "shipping") {
@@ -464,107 +442,6 @@ const Inventory: React.FC = () => {
   );
 
   const renderInventoryTable = () => {
-    // レスポンシブテーブル用の列定義
-    const columns = [
-      {
-        key: 'product_name',
-        label: '商品名',
-        render: (value: string, row: InventoryItem) => (
-          <div className="flex items-center gap-3">
-            {row.image && (
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center overflow-hidden">
-                <img src={row.image} alt={row.product_name} className="w-full h-full object-cover" />
-              </div>
-            )}
-            <div>
-              <div className="text-sm font-medium text-gray-900">{value}</div>
-              <div className="text-xs text-gray-500">{row.item_code}</div>
-            </div>
-          </div>
-        )
-      },
-      {
-        key: 'category',
-        label: 'カテゴリ',
-        render: (value: string) => (
-          <Badge className="bg-blue-100 text-blue-800">{value}</Badge>
-        )
-      },
-      {
-        key: 'storing_place',
-        label: '保管場所',
-        render: (value: string) => value || '未設定'
-      },
-      {
-        key: 'stock_quantity',
-        label: '在庫数',
-        render: (value: number, row: InventoryItem) => (
-          <div className="text-sm font-bold text-gray-900">{value}{row.unit}</div>
-        )
-      },
-      {
-        key: 'unit_price',
-        label: '単価',
-        render: (value: string) => `¥${parseFloat(value).toLocaleString()}`
-      },
-      {
-        key: 'total_value',
-        label: '在庫価値',
-        render: (_value: any, row: InventoryItem) => (
-          <div className="text-sm font-semibold text-gray-900">
-            ¥{(row.stock_quantity * parseFloat(row.unit_price)).toLocaleString()}
-          </div>
-        )
-      },
-      {
-        key: 'status',
-        label: 'ステータス',
-        render: (_value: any, row: InventoryItem) => {
-          const status = getInventoryStatus(row) as StockStatus;
-          return (
-            <Badge className={`${STATUS_CONFIG[status]?.color} ${STATUS_CONFIG[status]?.textColor}`}>
-              {STATUS_CONFIG[status]?.label}
-            </Badge>
-          );
-        }
-      },
-      {
-        key: 'updated_at',
-        label: '最終更新',
-        render: (value: string) => new Date(value).toLocaleDateString()
-      }
-    ];
-
-    // アクション定義
-    const actions = [
-      {
-        icon: <FaEye />,
-        label: '詳細',
-        onClick: (row: InventoryItem) => {
-          navigate(`/inventory/detail/${row.item_code}`);
-        },
-        className: 'border-blue-300 text-blue-700 hover:bg-blue-50'
-      },
-      {
-        icon: <FaHistory />,
-        label: '履歴',
-        onClick: (_row: InventoryItem) => {
-          setPreviousScreen('check');
-          fetchMovements();
-          setSelected('history');
-        },
-        className: 'border-purple-300 text-purple-700 hover:bg-purple-50'
-      },
-      {
-        icon: <FaEdit />,
-        label: '編集',
-        onClick: (row: InventoryItem) => {
-          navigate(`/inventory/register?edit=${row.item_code}`);
-        },
-        className: 'border-gray-300 text-gray-700 hover:bg-gray-50',
-        show: (_row: InventoryItem) => isAdmin
-      }
-    ];
 
     return (
       <div className="space-y-6">
@@ -992,181 +869,7 @@ const Inventory: React.FC = () => {
     );
   }
 
-  // 選択情報管理画面のレンダリング
-  const renderSelectionConfig = () => {
-    const getCurrentList = () => {
-      return selectionOptions[activeTab];
-    };
 
-    const addItem = () => {
-      if (!newItem.trim()) return;
-      
-      setSelectionOptions(prev => ({
-        ...prev,
-        [activeTab]: [...prev[activeTab], newItem.trim()]
-      }));
-      setNewItem('');
-    };
-
-    const deleteItem = (index: number) => {
-      setSelectionOptions(prev => ({
-        ...prev,
-        [activeTab]: prev[activeTab].filter((_, i) => i !== index)
-      }));
-    };
-
-    const startEdit = (index: number, value: string) => {
-      setEditingIndex(index);
-      setEditingValue(value);
-    };
-
-    const saveEdit = () => {
-      if (!editingValue.trim() || editingIndex === null) return;
-      
-      setSelectionOptions(prev => ({
-        ...prev,
-        [activeTab]: prev[activeTab].map((item, i) => 
-          i === editingIndex ? editingValue.trim() : item
-        )
-      }));
-      setEditingIndex(null);
-      setEditingValue('');
-    };
-
-    const cancelEdit = () => {
-      setEditingIndex(null);
-      setEditingValue('');
-    };
-
-    const tabs = [
-      { key: 'categories' as const, label: 'カテゴリー', icon: '📂' },
-      { key: 'suppliers' as const, label: '発注先', icon: '🏪' },
-      { key: 'units' as const, label: '単位', icon: '📏' }
-    ];
-
-    return (
-      <Card className="shadow-xl bg-white border-0">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-blue-900 text-xl flex items-center gap-3">
-              <FaEdit className="text-blue-600" />
-              選択情報管理
-            </CardTitle>
-            <Button
-              onClick={() => setSelected(null)}
-              variant="outline"
-              className="border-blue-300 text-blue-700 hover:bg-blue-50"
-            >
-              <FaArrowLeft className="mr-2" />
-              戻る
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          {/* タブナビゲーション */}
-          <div className="flex space-x-1 mb-6 bg-white border border-gray-200 p-1 rounded-lg shadow-sm">
-            {tabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md transition-all ${
-                  activeTab === tab.key
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-                }`}
-              >
-                <span>{tab.icon}</span>
-                <span className="font-medium">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* 新規追加フォーム */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-gray-800 mb-3">新しい{tabs.find(t => t.key === activeTab)?.label}を追加</h3>
-            <div className="flex gap-3">
-              <input
-                type="text"
-                value={newItem}
-                onChange={(e) => setNewItem(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addItem()}
-                placeholder={`新しい${tabs.find(t => t.key === activeTab)?.label}を入力`}
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <Button
-                onClick={addItem}
-                disabled={!newItem.trim()}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6"
-              >
-                <FaPlus className="mr-1" />
-                追加
-              </Button>
-            </div>
-          </div>
-
-          {/* 既存項目一覧 */}
-          <div className="space-y-2">
-            <h3 className="font-medium text-gray-800 mb-3">
-              {tabs.find(t => t.key === activeTab)?.label}一覧 ({getCurrentList().length}件)
-            </h3>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {getCurrentList().map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg">
-                  {editingIndex === index ? (
-                    <>
-                      <input
-                        type="text"
-                        value={editingValue}
-                        onChange={(e) => setEditingValue(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
-                        className="flex-1 border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        autoFocus
-                      />
-                      <Button
-                        onClick={saveEdit}
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white px-3"
-                      >
-                        保存
-                      </Button>
-                      <Button
-                        onClick={cancelEdit}
-                        variant="outline"
-                        size="sm"
-                        className="border-gray-300 text-gray-600 hover:bg-gray-50 px-3"
-                      >
-                        キャンセル
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="flex-1 text-gray-800">{item}</span>
-                      <Button
-                        onClick={() => startEdit(index, item)}
-                        variant="outline"
-                        size="sm"
-                        className="border-blue-300 text-blue-600 hover:bg-blue-50 px-3"
-                      >
-                        <FaEdit className="text-xs" />
-                      </Button>
-                      <Button
-                        onClick={() => deleteItem(index)}
-                        variant="outline"
-                        size="sm"
-                        className="border-red-300 text-red-600 hover:bg-red-50 px-3"
-                      >
-                        <FaTrash className="text-xs" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
@@ -1362,7 +1065,7 @@ const Inventory: React.FC = () => {
           {selected === "receiving" && renderStockMovementForm('in')}
           {selected === "shipping" && renderStockMovementForm('out')}
           {selected === "history" && renderMovementHistory()}
-          {selected === "selection-config" && renderSelectionConfig()}
+
           {selected === "locations" && (
             <Card className="shadow-xl bg-white border-0">
               <CardHeader className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-b border-indigo-200">

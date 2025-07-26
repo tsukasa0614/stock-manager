@@ -183,7 +183,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isFormData: boolean = false
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
@@ -194,6 +195,11 @@ class ApiClient {
 
     if (this.token) {
       headers['Authorization'] = `Token ${this.token}`;
+    }
+
+    if (isFormData) {
+      // FormDataを使用する場合はContent-Typeを設定しない
+      delete headers['Content-Type'];
     }
 
     console.log('API リクエスト:', { url, method: options.method || 'GET', headers, body: options.body });
@@ -301,7 +307,7 @@ class ApiClient {
       method: 'POST',
       body: inventoryData,
       headers,
-    });
+    }, true); // FormDataを使用することを示すフラグ
   }
 
   async getInventory(itemCode: string): Promise<ApiResponse<InventoryItem>> {
@@ -318,7 +324,7 @@ class ApiClient {
       method: 'PUT',
       body: inventoryData,
       headers,
-    });
+    }, true); // FormDataを使用することを示すフラグ
   }
 
   async deleteInventory(itemCode: string): Promise<ApiResponse<void>> {

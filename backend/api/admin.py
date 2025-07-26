@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Account,Inventory,Factory,StockMovement,Stocktaking,Manager,Warehouse,StorageLocation,StorageArea,Coordinate,SelectionOption
+from .models import Account,Inventory,Factory,StockMovement,Stocktaking,Manager,Warehouse,StorageLocation,StorageArea,Coordinate
 
 # Register your models here.
 # admin.site.register(Account)
@@ -116,24 +116,3 @@ class CoordinateAdmin(admin.ModelAdmin):
     has_inventory.boolean = True
     has_inventory.short_description = '在庫有無'
 
-# SelectionOption管理画面の設定
-@admin.register(SelectionOption)
-class SelectionOptionAdmin(admin.ModelAdmin):
-    list_display = ['option_type_display', 'value', 'is_active', 'sort_order', 'created_at']
-    list_filter = ['option_type', 'is_active']
-    search_fields = ['value']
-    ordering = ['option_type', 'sort_order', 'value']
-    
-    fieldsets = (
-        ('基本情報', {
-            'fields': ('option_type', 'value', 'is_active')
-        }),
-        ('表示設定', {
-            'fields': ('sort_order',)
-        }),
-    )
-    
-    def option_type_display(self, obj):
-        """選択肢の種類を日本語で表示"""
-        return obj.get_option_type_display()
-    option_type_display.short_description = '種類'

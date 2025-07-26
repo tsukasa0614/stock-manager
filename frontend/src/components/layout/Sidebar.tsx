@@ -154,58 +154,6 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
           </div>
         </div>
 
-        {/* ログイン者情報 */}
-        {!collapsed && (
-          <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                {user?.id?.charAt(0).toUpperCase() || 'U'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-bold text-gray-800 truncate">{user?.id || 'ユーザー'}</p>
-                  {user?.role === 'admin' ? (
-                    <FaShieldAlt className="text-red-500 text-sm" />
-                  ) : (
-                    <FaUser className="text-blue-500 text-sm" />
-                  )}
-                </div>
-                <p className={`text-xs font-medium ${
-                  user?.role === 'admin' ? 'text-red-600' : 'text-blue-600'
-                }`}>
-                  {user?.role === 'admin' ? '管理者' : '現場担当者'}
-                </p>
-                {user?.managed_factories && user.managed_factories.length > 0 && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <FaMapMarkerAlt className="text-gray-500 text-xs" />
-                    <p className="text-xs text-gray-500 truncate">
-                      {user.managed_factories.map(f => f.name).join(', ')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ログイン者情報 (折りたたみ時) */}
-        {collapsed && (
-          <div className="p-2 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-            <div className="flex justify-center">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg relative group">
-                {user?.id?.charAt(0).toUpperCase() || 'U'}
-                {user?.role === 'admin' && (
-                  <FaShieldAlt className="absolute -top-1 -right-1 text-red-500 text-xs bg-white rounded-full p-0.5" />
-                )}
-                {/* ツールチップ */}
-                <div className="absolute left-full ml-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
-                  {user?.id || 'ユーザー'} ({user?.role === 'admin' ? '管理者' : '現場担当者'})
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ナビゲーション */}
         <nav className="flex-1 p-4">
           <ul className="space-y-2">
@@ -231,8 +179,47 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
           </ul>
         </nav>
 
-        {/* ログアウトボタン */}
+        {/* ユーザー情報をログアウトボタンの直上に移動 */}
         <div className="p-4 border-t border-gray-200">
+          <div className="mb-4">
+            {!collapsed ? (
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                  {user?.id?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-gray-800 truncate">{user?.id || 'ユーザー'}</p>
+                    {user?.role === 'admin' ? (
+                      <FaShieldAlt className="text-red-500 text-sm" />
+                    ) : (
+                      <FaUser className="text-blue-500 text-sm" />
+                    )}
+                  </div>
+                  <p className={`text-xs font-medium ${user?.role === 'admin' ? 'text-red-600' : 'text-blue-600'}`}>{user?.role === 'admin' ? '管理者' : '現場担当者'}</p>
+                  {user?.managed_factories && user.managed_factories.length > 0 && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <FaMapMarkerAlt className="text-gray-500 text-xs" />
+                      <p className="text-xs text-gray-500 truncate">{user.managed_factories.map(f => f.name).join(', ')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold shadow-lg relative group">
+                  {user?.id?.charAt(0).toUpperCase() || 'U'}
+                  {user?.role === 'admin' && (
+                    <FaShieldAlt className="absolute -top-1 -right-1 text-red-500 text-xs bg-white rounded-full p-0.5" />
+                  )}
+                  {/* ツールチップ */}
+                  <div className="absolute left-full ml-2 px-3 py-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                    {user?.id || 'ユーザー'} ({user?.role === 'admin' ? '管理者' : '現場担当者'})
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           {collapsed ? (
             <div className="flex justify-center">
               <Button
