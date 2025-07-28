@@ -3,17 +3,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from ..models import Factory, Warehouse, StorageLocation, StorageArea, Coordinate
+from ..models import Factory, Warehouse, StorageLocation, StorageArea, Coordinate, Manager
 from ..serializers import (
     FactorySerializer,
     WarehouseSerializer,
     StorageLocationSerializer,
     StorageAreaSerializer
 )
-
-
-
-
 
 
 class FactoryListView(APIView):
@@ -37,6 +33,20 @@ class FactoryListView(APIView):
         serializer = FactorySerializer(factories, many=True)
         print(f"FactoryListView - シリアライズ結果: {len(serializer.data)}件")
         return Response(serializer.data)
+    def post(self,request):
+        user = request.user
+        serializer = FactorySerializer(data=request.data)
+        if not user.is_authenticated:
+            return Response({"error": "ユーザーが認証されていません"}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        if serializer.is_valid():
+            serializer.save()
+            manager = Manager.objects.create(
+                user=user,
+                factory=serializer.instance,
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class WarehouseListView(APIView):
     permission_classes = [AllowAny]  # 開発用: 認証を無効化

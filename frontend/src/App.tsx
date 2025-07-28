@@ -14,6 +14,7 @@ import InventoryRegister from "./pages/InventoryRegister";
 import ErrorBoundary from "./components/ErrorBoundary";
 import './App.css';
 import { ProtectedPage } from "./components/ProtectedPage";
+import { FactoryRegister } from "./pages/FactoryRegister";
 
 function AppLayout() {
   return (
@@ -44,6 +45,7 @@ function App() {
                 <Route path="/inventory/register" element={<InventoryRegister />} />
                 <Route path="/stocktaking" element={<Stocktaking />} />
                 <Route path="/factories" element={<Factories />} />
+                <Route path="/factories/register" element={<FactoryRegister />} />
                 <Route path="/users" element={<Users />} />
                 <Route path="/settings" element={<Settings />} />
               </Route>

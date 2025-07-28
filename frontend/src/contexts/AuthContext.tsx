@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { User, LoginResponse } from '../api/client';
+import type { User } from '../api/client';
 import { apiClient } from '../api/client';
 
 interface AuthContextType {
@@ -30,13 +30,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const [token, setToken] = useState<string | null>(null);
 
     useEffect(() => {
-        // アプリ起動時は常にログイン画面から開始
-        console.log('AuthProvider - Clearing local storage on startup');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        apiClient.clearToken();
-        setToken(null);
-        setUser(null);
+        // 起動時にlocalStorageからトークンとユーザー情報を復元
+        const savedToken = localStorage.getItem('authToken');
+        const savedUser = localStorage.getItem('user');
+        if (savedToken && savedUser) {
+            try {
+                setToken(savedToken);
+                setUser(JSON.parse(savedUser));
+                apiClient.setToken(savedToken);
+            } catch (e) {
+                setToken(null);
+                setUser(null);
+                apiClient.clearToken();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('user');
+            }
+        }
     }, []);
 
     const login = async (id: string, password: string) => {

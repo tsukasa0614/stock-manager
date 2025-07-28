@@ -10,6 +10,7 @@ import {
   FaBoxOpen
 } from "react-icons/fa";
 import { apiClient, type Factory, type Warehouse, type StorageLocation, type InventoryItem } from "../api/client";
+import { useNavigate } from "react-router-dom";
 
 // 基本的な工場データ表示用の型（APIの Factory 型を拡張）
 interface ExtendedFactory extends Factory {
@@ -32,6 +33,8 @@ const Factories: React.FC = () => {
   const [selectedFactoryId, setSelectedFactoryId] = useState<number | null>(null);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+  const navigator = useNavigate();
+
 
 
 
@@ -339,6 +342,9 @@ const Factories: React.FC = () => {
                 <FaIndustry className="text-green-600" />
                 工場一覧 ({factories.length}件)
               </CardTitle>
+              <Button onClick={()=>{
+                navigator('/factories/register');
+              }}>登録</Button>
             </div>
           </CardHeader>
           <CardContent className="p-6">
