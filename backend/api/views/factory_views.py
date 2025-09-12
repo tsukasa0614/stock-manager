@@ -28,6 +28,8 @@ class FactoryListView(APIView):
         serializer = FactorySerializer(data=request.data)
         if not user.is_authenticated:
             return Response({"error": "ユーザーが認証されていません"}, status=status.HTTP_401_UNAUTHORIZED)
+        if not user.is_staff:
+            return Response({"error": "管理者権限が必要です"}, status=status.HTTP_403_FORBIDDEN)
         
         if serializer.is_valid():
             serializer.save()

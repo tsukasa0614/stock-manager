@@ -188,6 +188,10 @@ const Inventory: React.FC = () => {
       alert("商品名と個数を入力してください");
       return;
     }
+    if (!user?.id) {
+      alert("ユーザー情報を取得できません。再ログインしてください。");
+      return;
+    }
 
     try {
       safeSetState(setLoading, true);
@@ -207,7 +211,7 @@ const Inventory: React.FC = () => {
         movement_type: movementType,
         quantity: parseInt(movementForm.quantity),
         reason: movementForm.reason,
-        user_id: 'test_admin', // 開発用: テストユーザーのIDを使用
+        user_id: user.id,
         factory_id: factoryId
       };
       

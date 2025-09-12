@@ -1,3 +1,9 @@
+# Environment files (do not commit)
+.env
+backend/.env
+
+# Python venv (optional)
+backend/venv/
 # Python
 __pycache__/
 *.py[cod]

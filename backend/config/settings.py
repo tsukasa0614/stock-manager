@@ -14,11 +14,22 @@ from pathlib import Path
 import os
 from urllib.parse import urlparse
 from urllib.parse import uses_netloc
+from dotenv import load_dotenv
 uses_netloc.extend(["postgres", "mysql", "mysql2", "mariadb", "sqlite"])
 # from dotenv import load_dotenv
 
-# # 環境変数の読み込み
-# load_dotenv()
+# 環境変数の読み込み（backend/.env → プロジェクトルート/.env の順にロード）
+backend_env_path = os.path.join(Path(__file__).resolve().parent.parent, '.env')
+project_root_env_path = os.path.join(Path(__file__).resolve().parent.parent.parent, '.env')
+
+explicit_env_file = os.getenv('ENV_FILE')
+if explicit_env_file and os.path.exists(explicit_env_file):
+    load_dotenv(explicit_env_file)
+else:
+    if os.path.exists(backend_env_path):
+        load_dotenv(backend_env_path)
+    if os.path.exists(project_root_env_path):
+        load_dotenv(project_root_env_path)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,13 +38,58 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
+# =============================
+# Environment variable helpers
+# =============================
+def get_env(name, default=None, required=False):
+    value = os.getenv(name, None)
+    if value is None:
+        if required:
+            raise RuntimeError(f"Environment variable '{name}' is required")
+        return default
+    return value
+
+def get_bool(name, default=False):
+    value = get_env(name, None)
+    if value is None:
+        return default
+    return str(value).lower() in {"1", "true", "yes", "on"}
+
+def get_list(name, default=""):
+    value = get_env(name, default)
+    if not value:
+        return []
+    return [item for item in str(value).split(',') if item]
+
+def get_int(name, default=0):
+    value = get_env(name, None)
+    if value is None:
+        return int(default)
+    try:
+        return int(value)
+    except ValueError:
+        return int(default)
+
+# Centralized ENV map
+ENV_DEBUG = get_bool('DEBUG', True)
+ENV_SECRET_KEY = get_env('DJANGO_SECRET_KEY', 'django-insecure-your-secret-key' if ENV_DEBUG else None, required=not ENV_DEBUG)
+ENV_ALLOWED_HOSTS = get_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
+ENV_DATABASE_URL = get_env('DATABASE_URL', None)
+ENV_CORS_ALLOWED_ORIGINS = get_list('CORS_ALLOWED_ORIGINS', '')
+ENV_CSRF_TRUSTED_ORIGINS = get_list('CSRF_TRUSTED_ORIGINS', '')
+ENV_DATA_UPLOAD_MAX_MEMORY_SIZE = get_int('DATA_UPLOAD_MAX_MEMORY_SIZE', 5 * 1024 * 1024)
+ENV_FILE_UPLOAD_MAX_MEMORY_SIZE = get_int('FILE_UPLOAD_MAX_MEMORY_SIZE', 5 * 1024 * 1024)
+ENV_THROTTLE_LOGIN = get_env('THROTTLE_LOGIN', '10/min')
+ENV_THROTTLE_ANON = get_env('THROTTLE_ANON', '60/min')
+ENV_THROTTLE_USER = get_env('THROTTLE_USER', '600/min')
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-your-secret-key')
+SECRET_KEY = ENV_SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = ENV_DEBUG
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ENV_ALLOWED_HOSTS
 
 
 # Application definition
@@ -86,7 +142,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASE_URL = os.getenv('DATABASE_URL')
+DATABASE_URL = ENV_DATABASE_URL
 
 if DATABASE_URL:
     try:
@@ -146,14 +202,32 @@ STATIC_URL = 'static/'
 MEDIA_URL = '/media/'  # ブラウザでアクセスする際のURL
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # サーバー上でファイルを保存するディレクトリ
 
+# Upload limits (centralized)
+DATA_UPLOAD_MAX_MEMORY_SIZE = ENV_DATA_UPLOAD_MAX_MEMORY_SIZE
+FILE_UPLOAD_MAX_MEMORY_SIZE = ENV_FILE_UPLOAD_MAX_MEMORY_SIZE
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS設定
-CORS_ALLOW_ALL_ORIGINS = True  # 開発環境のみ
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = ENV_CORS_ALLOWED_ORIGINS
+    CSRF_TRUSTED_ORIGINS = ENV_CSRF_TRUSTED_ORIGINS
 CORS_ALLOW_CREDENTIALS = True
+
+# Security headers (prod)
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+SECURE_REFERRER_POLICY = 'same-origin'
 
 #認証
 AUTH_USER_MODEL = 'api.Account'
@@ -167,4 +241,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'login': ENV_THROTTLE_LOGIN,
+        'anon': ENV_THROTTLE_ANON,
+        'user': ENV_THROTTLE_USER,
+    },
 }

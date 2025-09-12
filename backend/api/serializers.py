@@ -30,7 +30,12 @@ class ManagerSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Manager
-        fields = '__all__'
+        fields = [
+            'id', 'user', 'factory', 'role', 'permissions', 'assigned_at',
+            'is_active', 'memo', 'created_at', 'updated_at',
+            # read-only exposed fields
+            'user_id', 'user_name', 'factory_name', 'role_display',
+        ]
         read_only_fields = ['assigned_at', 'created_at', 'updated_at']
 
 class StorageLocationSerializer(serializers.ModelSerializer):
@@ -39,7 +44,13 @@ class StorageLocationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StorageLocation
-        fields = '__all__'
+        fields = [
+            'id', 'location_name', 'warehouse', 'x_position', 'y_position',
+            'width', 'height', 'capacity', 'current_stock', 'location_type',
+            'status', 'memo', 'created_at', 'updated_at',
+            # computed / read-only
+            'warehouse_name', 'utilization_rate',
+        ]
         read_only_fields = ['created_at', 'updated_at']
 
 class WarehouseSerializer(serializers.ModelSerializer):
@@ -51,7 +62,13 @@ class WarehouseSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Warehouse
-        fields = '__all__'
+        fields = [
+            'id', 'warehouse_name', 'factory', 'description', 'width', 'height',
+            'status', 'created_at', 'updated_at',
+            # nested and computed
+            'factory_name', 'storage_locations', 'total_locations',
+            'occupied_locations', 'available_locations',
+        ]
         read_only_fields = ['created_at', 'updated_at']
     
     def get_total_locations(self, obj):
@@ -71,7 +88,14 @@ class InventorySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Inventory
-        fields = '__all__'
+        fields = [
+            'id', 'image', 'item_code', 'product_name', 'standard', 'category',
+            'stock_quantity', 'lowest_stock', 'unit', 'unit_price', 'supplier',
+            'storing_place', 'coordinate', 'memo', 'factory', 'created_at',
+            'updated_at',
+            # read-only / computed
+            'factory_name',
+        ]
         read_only_fields = ['created_at', 'updated_at']
     
     def to_representation(self, instance):
@@ -104,7 +128,12 @@ class StockMovementSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StockMovement
-        fields = '__all__'
+        fields = [
+            'id', 'item_id', 'movement_type', 'quantity', 'reason', 'user_id',
+            'factory_id', 'created_at', 'updated_at',
+            # read-only
+            'item_name', 'item_code', 'user_name', 'factory_name',
+        ]
         read_only_fields = ['created_at', 'updated_at']
 
 class StocktakingSerializer(serializers.ModelSerializer):
@@ -114,7 +143,12 @@ class StocktakingSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Stocktaking
-        fields = '__all__'
+        fields = [
+            'id', 'item_id', 'theoretical_stock', 'actual_stock', 'difference',
+            'user_id', 'status', 'memo', 'created_at', 'updated_at',
+            # read-only
+            'item_name', 'item_code', 'user_name',
+        ]
         read_only_fields = ['created_at', 'updated_at', 'difference']
 
 class FactorySerializer(serializers.ModelSerializer):
@@ -125,7 +159,12 @@ class FactorySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Factory
-        fields = '__all__'
+        fields = [
+            'id', 'factory_name', 'address', 'phone', 'status', 'capacity',
+            'memo', 'created_at', 'updated_at',
+            # nested / computed
+            'managers', 'warehouses', 'manager_count', 'warehouse_count',
+        ]
         read_only_fields = ['created_at', 'updated_at']
     
     def get_manager_count(self, obj):
@@ -145,7 +184,13 @@ class CoordinateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Coordinate
-        fields = '__all__'
+        fields = [
+            'id', 'storage_area', 'x_position', 'y_position', 'created_at',
+            'updated_at',
+            # read-only / computed
+            'storage_area_name', 'coordinate_name', 'position_name',
+            'inventory_items',
+        ]
         read_only_fields = ['created_at', 'updated_at']
     
     def get_inventory_items(self, obj):
@@ -163,7 +208,13 @@ class StorageAreaSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = StorageArea
-        fields = '__all__'
+        fields = [
+            'id', 'area_name', 'factory', 'width', 'height', 'description',
+            'created_at', 'updated_at',
+            # read-only / computed
+            'factory_name', 'coordinates', 'total_coordinates',
+            'occupied_coordinates', 'available_coordinates', 'utilization_rate',
+        ]
         read_only_fields = ['created_at', 'updated_at']
     
     def get_available_coordinates(self, obj):

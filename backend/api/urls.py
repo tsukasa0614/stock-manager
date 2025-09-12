@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import auth_views, factory_views, manager_views, inventory_views, stock_views, coordinate_views
+from .views import auth_views, manager_views, inventory_views, stock_views, coordinate_views, factories, warehouses, storage_locations, storage_areas
 
 urlpatterns = [
     # 認証
@@ -22,19 +22,19 @@ urlpatterns = [
     path('stocktakings/', stock_views.StocktakingListView.as_view(), name='stocktaking_list'),
     
     # 工場
-    path('factories/', factory_views.FactoryListView.as_view(), name='factory_list'),
+    path('factories/', factories.FactoryListView.as_view(), name='factory_list'),
     
     # 倉庫（旧システム）
-    path('warehouses/', factory_views.WarehouseListView.as_view(), name='warehouse_list'),
-    path('warehouses/<int:pk>/', factory_views.WarehouseDetailView.as_view(), name='warehouse_detail'),
+    path('warehouses/', warehouses.WarehouseListView.as_view(), name='warehouse_list'),
+    path('warehouses/<int:pk>/', warehouses.WarehouseDetailView.as_view(), name='warehouse_detail'),
     
     # 置き場（旧システム）
-    path('storage-locations/', factory_views.StorageLocationListView.as_view(), name='storage_location_list'),
-    path('storage-locations/<int:pk>/', factory_views.StorageLocationDetailView.as_view(), name='storage_location_detail'),
+    path('storage-locations/', storage_locations.StorageLocationListView.as_view(), name='storage_location_list'),
+    path('storage-locations/<int:pk>/', storage_locations.StorageLocationDetailView.as_view(), name='storage_location_detail'),
     
     # 置き場（新システム）
-    path('storage-areas/', factory_views.StorageAreaListView.as_view(), name='storage_area_list'),
-    path('storage-areas/<int:pk>/', factory_views.StorageAreaDetailView.as_view(), name='storage_area_detail'),
+    path('storage-areas/', storage_areas.StorageAreaListView.as_view(), name='storage_area_list'),
+    path('storage-areas/<int:pk>/', storage_areas.StorageAreaDetailView.as_view(), name='storage_area_detail'),
     
     # 座標（新システム）
     path('coordinates/', coordinate_views.CoordinateListView.as_view(), name='coordinate_list'),
