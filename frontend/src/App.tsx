@@ -10,6 +10,7 @@ import Stocktaking from "./pages/Stocktaking";
 import Factories from "./pages/Factories";
 import { Users } from "./pages/Users";
 import Settings from "./pages/Settings";
+import AlertsPage from "./pages/Alerts";
 import InventoryRegister from "./pages/InventoryRegister";
 import ErrorBoundary from "./components/ErrorBoundary";
 import './App.css';
@@ -40,6 +41,7 @@ function App() {
               {/* 認証が必要なページはすべて保護 */}
               <Route element={<AppLayout />}>
                 <Route path="/home" element={<Home />} />
+                <Route path="/alerts" element={<AlertsPage />} />
                 <Route path="/inventory" element={<Inventory />} />
                 <Route path="/inventory/detail/:itemCode" element={<ProductDetail />} />
                 <Route path="/inventory/register" element={<InventoryRegister />} />

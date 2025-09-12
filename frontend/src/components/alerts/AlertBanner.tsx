@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useAlert } from '../../contexts/AlertContext';
 import { FaExclamationTriangle, FaCheckCircle, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 
 interface AlertBannerProps {
   maxVisible?: number;
@@ -14,6 +15,7 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
   autoHideDelay = 10000 
 }) => {
   const { alerts, markAsRead, dismissAlert } = useAlert();
+  const navigate = useNavigate();
 
   // 表示するアラートを取得（最新のものから指定数まで）
   const displayedAlerts = alerts.slice(0, maxVisible);
@@ -64,6 +66,14 @@ export const AlertBanner: React.FC<AlertBannerProps> = ({
 
   return (
     <div className="space-y-2">
+      <div className="flex justify-end mb-1">
+        <button
+          onClick={() => navigate('/alerts')}
+          className="text-xs px-2 py-1 bg-white border border-yellow-200 rounded-md text-gray-700 hover:bg-yellow-50"
+        >
+          アラート一覧へ
+        </button>
+      </div>
       {displayedAlerts.map(alert => (
         <div
           key={alert.id}

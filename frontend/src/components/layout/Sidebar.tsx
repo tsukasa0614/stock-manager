@@ -13,6 +13,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { Button } from "../ui/button";
+import { Bell } from "lucide-react";
+import { useAlert } from "../../contexts/AlertContext";
 import { FaBox, FaShieldAlt, FaUser, FaMapMarkerAlt } from "react-icons/fa";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -23,6 +25,13 @@ const menuItems = [
     icon: LayoutDashboard,
     color: "bg-yellow-500",
     requiredRole: null, // 全ユーザーがアクセス可能
+  },
+  {
+    title: "アラート",
+    href: "/alerts",
+    icon: Bell,
+    color: "bg-yellow-500",
+    requiredRole: null,
   },
   {
     title: "在庫管理",

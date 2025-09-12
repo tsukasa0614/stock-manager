@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { AlertBanner } from '../components/alerts/AlertBanner';
 import {
   FaBoxOpen,
   FaArrowLeft,
@@ -296,10 +295,7 @@ const ProductDetail: React.FC = () => {
           )}
         </div>
 
-        {/* アラート通知バナー */}
-        <div className="mb-6">
-          <AlertBanner maxVisible={2} />
-        </div>
+        {/* アラート通知バナー 削除 */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* 左カラム: 基本情報と画像 */}

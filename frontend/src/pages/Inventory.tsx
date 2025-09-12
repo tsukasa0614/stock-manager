@@ -5,7 +5,6 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 
 import { AdvancedFilterPanel } from "../components/inventory/AdvancedFilterPanel";
-import { AlertBanner } from "../components/alerts/AlertBanner";
 import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar,  FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import { useAlert } from "../contexts/AlertContext";
@@ -856,10 +855,8 @@ const Inventory: React.FC = () => {
             </div>
           </div>
 
-          {/* アラート通知バナー */}
-          <div className="mb-6">
-            <AlertBanner maxVisible={2} />
-          </div>
+          {/* アラート通知バナー 削除 */}
+          {/* アラート通知バナー 削除 */}
 
           {/* 統計カード */}
           <div className="mb-8">
