@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from ..models import Factory, Warehouse, StorageLocation, StorageArea, Coordinate, Manager
@@ -13,25 +13,15 @@ from ..serializers import (
 
 
 class FactoryListView(APIView):
-    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """工場一覧を取得"""
         user = request.user
         
-        print(f"FactoryListView - ユーザー認証状態: {user.is_authenticated}")
-        print(f"FactoryListView - ユーザー: {user}")
-        
-        # 開発用: 認証されていない場合は全ての工場を返す
-        if not user.is_authenticated:
-            factories = Factory.objects.all()
-            print(f"FactoryListView - 認証なし: {factories.count()}件の工場を返す")
-        else:
-            factories = user.managed_factories
-            print(f"FactoryListView - 認証あり: {factories.count()}件の工場を返す")
+        factories = user.managed_factories
         
         serializer = FactorySerializer(factories, many=True)
-        print(f"FactoryListView - シリアライズ結果: {len(serializer.data)}件")
         return Response(serializer.data)
     def post(self,request):
         user = request.user
@@ -49,25 +39,15 @@ class FactoryListView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class WarehouseListView(APIView):
-    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """倉庫一覧を取得"""
         user = request.user
         
-        print(f"WarehouseListView - ユーザー認証状態: {user.is_authenticated}")
-        print(f"WarehouseListView - ユーザー: {user}")
-        
-        # 開発用: 認証されていない場合は全ての保管エリアを返す
-        if not user.is_authenticated:
-            warehouses = Warehouse.objects.all()
-            print(f"WarehouseListView - 認証なし: {warehouses.count()}件の保管エリアを返す")
-        else:
-            warehouses = Warehouse.objects.filter(factory__in=user.managed_factories)
-            print(f"WarehouseListView - 認証あり: {warehouses.count()}件の保管エリアを返す")
+        warehouses = Warehouse.objects.filter(factory__in=user.managed_factories)
         
         serializer = WarehouseSerializer(warehouses, many=True)
-        print(f"WarehouseListView - シリアライズ結果: {len(serializer.data)}件")
         return Response(serializer.data)
     
     def post(self, request):
@@ -123,18 +103,14 @@ class WarehouseDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class StorageLocationListView(APIView):
-    permission_classes = [AllowAny]  # 開発用: 認証を無効化
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """置き場一覧を取得"""
         user = request.user
         warehouse_id = request.query_params.get('warehouse_id')
         
-        # 開発用: 認証されていない場合は全ての置き場を返す
-        if not user.is_authenticated:
-            queryset = StorageLocation.objects.all()
-        else:
-            queryset = StorageLocation.objects.filter(warehouse__factory__in=user.managed_factories)
+        queryset = StorageLocation.objects.filter(warehouse__factory__in=user.managed_factories)
         
         if warehouse_id:
             queryset = queryset.filter(warehouse_id=warehouse_id)
@@ -145,14 +121,6 @@ class StorageLocationListView(APIView):
     def post(self, request):
         """新しい置き場を作成"""
         user = request.user
-        
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from ..models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         serializer = StorageLocationSerializer(data=request.data)
         if serializer.is_valid():
@@ -181,14 +149,6 @@ class StorageLocationDetailView(APIView):
         """置き場を更新"""
         user = request.user
         
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from ..models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
         storage_location = get_object_or_404(StorageLocation, pk=pk)
         if not user.is_factory_manager(storage_location.warehouse.factory):
             return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
@@ -203,14 +163,6 @@ class StorageLocationDetailView(APIView):
         """置き場を削除"""
         user = request.user
         
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from ..models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
         storage_location = get_object_or_404(StorageLocation, pk=pk)
         if not user.is_factory_manager(storage_location.warehouse.factory):
             return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
@@ -219,18 +171,14 @@ class StorageLocationDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 # 新しい置き場システム用API
 class StorageAreaListView(APIView):
-    permission_classes = [AllowAny]  # テスト用
+    permission_classes = [IsAuthenticated]
     
     def get(self, request):
         """置き場一覧を取得"""
         user = request.user
         factory_id = request.query_params.get('factory_id')
         
-        # テスト用: 認証されていない場合は全ての置き場を返す
-        if not user.is_authenticated:
-            queryset = StorageArea.objects.all()
-        else:
-            queryset = StorageArea.objects.filter(factory__in=user.managed_factories)
+        queryset = StorageArea.objects.filter(factory__in=user.managed_factories)
         
         if factory_id:
             queryset = queryset.filter(factory_id=factory_id)
@@ -241,14 +189,6 @@ class StorageAreaListView(APIView):
     def post(self, request):
         """新しい置き場を作成"""
         user = request.user
-        
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from ..models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         serializer = StorageAreaSerializer(data=request.data)
         if serializer.is_valid():
@@ -277,15 +217,14 @@ class StorageAreaListView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class StorageAreaDetailView(APIView):
-    permission_classes = [AllowAny]  # テスト用
+    permission_classes = [IsAuthenticated]
     
     def get(self, request, pk):
         """置き場詳細を取得"""
         user = request.user
         storage_area = get_object_or_404(StorageArea, pk=pk)
         
-        # テスト用: 認証されていない場合は権限チェックをスキップ
-        if user.is_authenticated and not user.is_factory_manager(storage_area.factory):
+        if not user.is_factory_manager(storage_area.factory):
             return Response({"error": "アクセス権限がありません"}, status=status.HTTP_403_FORBIDDEN)
         
         serializer = StorageAreaSerializer(storage_area)
@@ -324,14 +263,6 @@ class StorageAreaDetailView(APIView):
     def delete(self, request, pk):
         """置き場を削除"""
         user = request.user
-        
-        # 開発用: 認証されていない場合はテストユーザーとして扱う
-        if not user.is_authenticated:
-            from ..models import Account
-            try:
-                user = Account.objects.get(id="test_admin")
-            except Account.DoesNotExist:
-                return Response({"error": "テストユーザーが見つかりません"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         storage_area = get_object_or_404(StorageArea, pk=pk)
         if not user.is_factory_manager(storage_area.factory):

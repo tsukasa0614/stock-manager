@@ -172,11 +172,15 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+// 環境変数からAPIのベースURLを取得（未設定時はローカルを既定値とする）
+const envBase = (import.meta.env.VITE_API_BASE_URL as string | undefined);
+const defaultApiBaseUrl = envBase && envBase.trim().length > 0 ? envBase : 'http://localhost:8000/api';
+
 class ApiClient {
   private baseURL: string;
   private token: string | null = null;
 
-  constructor(baseURL: string = 'http://localhost:8000/api') {
+  constructor(baseURL: string = defaultApiBaseUrl) {
     this.baseURL = baseURL;
     this.token = localStorage.getItem('authToken');
   }
@@ -202,7 +206,11 @@ class ApiClient {
       delete headers['Content-Type'];
     }
 
-    console.log('API リクエスト:', { url, method: options.method || 'GET', headers, body: options.body });
+    if (import.meta.env.DEV) {
+      // 開発時のみ最低限のログ
+      const safeHeaders = { ...headers, Authorization: headers.Authorization ? 'Token ****' : undefined };
+      console.log('API リクエスト:', { url, method: options.method || 'GET', headers: safeHeaders });
+    }
 
     try {
       const response = await fetch(url, {
@@ -210,18 +218,44 @@ class ApiClient {
         headers,
       });
 
-      console.log('API レスポンス:', { status: response.status, statusText: response.statusText, ok: response.ok });
+      if (import.meta.env.DEV) {
+        console.log('API レスポンス:', { status: response.status, statusText: response.statusText, ok: response.ok });
+      }
+
+      // 401 統一ハンドリング
+      if (response.status === 401) {
+        this.clearToken();
+        return {
+          error: '認証が必要です。再度ログインしてください。',
+        };
+      }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        // JSONでない可能性や空ボディ考慮
+        let errorData: any = {};
+        try {
+          errorData = await response.json();
+        } catch {}
         console.error('APIエラーデータ:', errorData);
         return {
           error: errorData.error || errorData.message || `HTTP Error ${response.status}`,
         };
       }
 
-      const data = await response.json();
-      console.log('レスポンスデータ:', data);
+      // 204 No Content 等は body が無い
+      if (response.status === 204) {
+        return { data: undefined as unknown as T };
+      }
+
+      // JSONでない/空ボディに備える
+      const text = await response.text();
+      if (!text) {
+        return { data: undefined as unknown as T };
+      }
+      const data = JSON.parse(text);
+      if (import.meta.env.DEV) {
+        console.log('レスポンスデータ:', data);
+      }
       return { data };
     } catch (error) {
       console.error('Request failed:', error);
