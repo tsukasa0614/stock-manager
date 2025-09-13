@@ -30,7 +30,7 @@ const menuItems = [
     title: "アラート",
     href: "/alerts",
     icon: Bell,
-    color: "bg-yellow-500",
+    color: "bg-indigo-500",
     requiredRole: null,
   },
   {
@@ -81,6 +81,7 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
   const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { unreadCount } = useAlert();
 
   const collapsed = isCollapsed !== undefined ? isCollapsed : internalIsCollapsed;
 
@@ -178,10 +179,16 @@ export function Sidebar({ isCollapsed, onToggleCollapse }: SidebarProps) {
                   }`}
                   title={collapsed ? item.title : undefined}
                 >
-                  <div className={`min-w-[2rem] h-8 rounded-lg flex items-center justify-center ${item.color}`}>
+                  <div className={`relative min-w-[2rem] h-8 rounded-lg flex items-center justify-center ${item.color}`}>
                     <item.icon className="w-5 h-5 text-white" />
+                    {item.href === '/alerts' && unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white" />
+                    )}
                   </div>
                   {!collapsed && <span className="font-medium">{item.title}</span>}
+                  {!collapsed && item.href === '/alerts' && unreadCount > 0 && (
+                    <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 border border-rose-200">{unreadCount}</span>
+                  )}
                 </Link>
               </li>
             ))}
