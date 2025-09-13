@@ -5,15 +5,14 @@ import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 
 import { AdvancedFilterPanel } from "../components/inventory/AdvancedFilterPanel";
-import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar,  FaEye, FaHistory, FaArrowLeft, FaFileExcel, FaFileAlt, FaExclamationTriangle, FaFilter } from "react-icons/fa";
+import { QRScanner } from "../components/qr/QRScanner";
+import { QRLabelDialog } from "../components/qr/QRLabelDialog";
+import { FaBoxOpen, FaTruck, FaArrowUp, FaClipboardList, FaChartBar,  FaEye, FaHistory, FaArrowLeft, FaFilter, FaQrcode, FaPlus, FaMinus, FaCheck, FaPrint } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import { useAlert } from "../contexts/AlertContext";
 import { apiClient, type InventoryItem, type StockMovement, type Factory } from "../api/client";
 import { 
-  exportInventoryToCSV, 
-  exportMovementsToCSV, 
-  exportInventorySummaryToCSV, 
-  exportLowStockToCSV 
+  exportMovementsToCSV
 } from "../utils/csvExport";
 import { filterInventory, getFilteredStats, hasActiveFilters, getInventoryStatus } from "../utils/filterUtils";
 import type { InventoryFilters } from "../types/filters";
@@ -40,31 +39,22 @@ const adminMenuItems = [
     color: "from-blue-400 via-indigo-500 to-blue-600",
     hoverColor: "group-hover:from-blue-500 group-hover:via-indigo-600 group-hover:to-blue-700"
   },
-
 ];
 
-// 一般ユーザー用メニューアイテム（日常業務系）
-const userMenuItems = [
+// 基本メニューアイテム（入出庫と在庫確認）
+const basicMenuItems = [
   {
-    key: "receiving",
-    label: "入荷処理",
-    description: "商品の入荷記録",
+    key: "stock_operations",
+    label: "入出庫登録",
+    description: "商品の入荷・出荷記録",
     icon: <FaTruck />,
     color: "from-sky-400 via-blue-500 to-indigo-600", 
     hoverColor: "group-hover:from-sky-500 group-hover:via-blue-600 group-hover:to-indigo-700"
   },
   {
-    key: "shipping",
-    label: "出荷処理",
-    description: "商品の出荷記録",
-    icon: <FaArrowUp />,
-    color: "from-indigo-400 via-blue-500 to-cyan-600",
-    hoverColor: "group-hover:from-indigo-500 group-hover:via-blue-600 group-hover:to-cyan-700"
-  },
-  {
-    key: "check",
-    label: "在庫確認",
-    description: "在庫一覧・履歴・アラート確認",
+    key: "inventory_list",
+    label: "在庫一覧",
+    description: "在庫確認・移動履歴表示",
     icon: <FaClipboardList />,
     color: "from-cyan-400 via-blue-500 to-teal-600",
     hoverColor: "group-hover:from-cyan-500 group-hover:via-blue-600 group-hover:to-teal-700"
@@ -81,7 +71,14 @@ const Inventory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-
+  // QRスキャン関連の状態
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [scannedItems, setScannedItems] = useState<{item: InventoryItem, quantity: number, type: 'in' | 'out'}[]>([]);
+  const [currentScanType, setCurrentScanType] = useState<'in' | 'out'>('in');
+  
+  // QRラベル印刷関連の状態
+  const [showQRLabelDialog, setShowQRLabelDialog] = useState(false);
+  const [selectedItemsForPrint, setSelectedItemsForPrint] = useState<Set<number>>(new Set());
   
   // フィルター状態の追加
   const [filters, setFilters] = useState<InventoryFilters>(initialFilters);
@@ -125,10 +122,10 @@ const Inventory: React.FC = () => {
   const handleMenuClick = (key: string) => {
     if (key === "register") {
       navigate("/inventory/register");
-    } else if (key === "receiving") {
-      setSelected("receiving");
-    } else if (key === "shipping") {
-      setSelected("shipping");
+    } else if (key === "stock_operations") {
+      setSelected("stock_operations");
+    } else if (key === "inventory_list") {
+      setSelected("inventory_list");
     } else {
       setSelected(key);
     }
@@ -272,6 +269,124 @@ const Inventory: React.FC = () => {
       safeSetState(setLoading, false);
     }
   };
+
+  // QRコードスキャン結果の処理
+  const handleQRScan = (qrText: string) => {
+    try {
+      // QRコードから商品コードを抽出（商品コードがそのまま入っている想定）
+      const itemCode = qrText.trim();
+      
+      // 商品を検索
+      const foundItem = inventoryList.find(item => 
+        item.item_code === itemCode || 
+        item.product_name === itemCode ||
+        item.id.toString() === itemCode
+      );
+
+      if (foundItem) {
+        // 既にスキャン済みの商品かチェック
+        const existingIndex = scannedItems.findIndex(scanned => scanned.item.id === foundItem.id);
+        
+        if (existingIndex >= 0) {
+          // 既存の場合は数量を増加
+          const updatedItems = [...scannedItems];
+          updatedItems[existingIndex].quantity += 1;
+          setScannedItems(updatedItems);
+        } else {
+          // 新規の場合は追加
+          setScannedItems(prev => [...prev, {
+            item: foundItem,
+            quantity: 1,
+            type: currentScanType
+          }]);
+        }
+        
+        // スキャン成功の音を鳴らす（オプション）
+        if ('vibrate' in navigator) {
+          navigator.vibrate(100);
+        }
+        
+        alert(`✅ ${foundItem.product_name} をスキャンしました！\n数量: ${existingIndex >= 0 ? scannedItems[existingIndex].quantity + 1 : 1}`);
+      } else {
+        alert(`❌ 商品が見つかりません: ${itemCode}`);
+      }
+    } catch (err) {
+      console.error('QRスキャン処理エラー:', err);
+      alert('QRコードの読み取りに失敗しました');
+    }
+  };
+
+  // スキャンした商品の数量変更
+  const updateScannedQuantity = (itemId: number, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      setScannedItems(prev => prev.filter(scanned => scanned.item.id !== itemId));
+    } else {
+      setScannedItems(prev => 
+        prev.map(scanned => 
+          scanned.item.id === itemId 
+            ? { ...scanned, quantity: newQuantity }
+            : scanned
+        )
+      );
+    }
+  };
+
+  // バッチ処理の実行
+  const executeBatchMovements = async () => {
+    if (scannedItems.length === 0) {
+      alert('処理する商品がありません');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const results = [];
+      
+      for (const scannedItem of scannedItems) {
+        const requestData = {
+          item_id: scannedItem.item.id,
+          movement_type: scannedItem.type,
+          quantity: scannedItem.quantity,
+          reason: `QRスキャン${scannedItem.type === 'in' ? '入荷' : '出荷'}`,
+          user_id: user?.id || 0,
+          factory_id: scannedItem.item.factory
+        };
+        
+        const response = await apiClient.createStockMovement(requestData);
+        results.push({
+          item: scannedItem.item,
+          success: !!response.data,
+          error: response.error
+        });
+      }
+      
+      // 結果の集計
+      const successCount = results.filter(r => r.success).length;
+      const failCount = results.filter(r => !r.success).length;
+      
+      if (successCount > 0) {
+        alert(`✅ ${successCount}件の処理が完了しました！${failCount > 0 ? `\n❌ ${failCount}件の処理に失敗しました` : ''}`);
+        
+        // スキャンリストをクリア
+        setScannedItems([]);
+        
+        // 在庫データを再読み込み
+        const inventoriesRes = await apiClient.getInventories();
+        if (inventoriesRes.data && isMountedRef.current) {
+          safeSetState(setInventoryList, inventoriesRes.data);
+          generateAlertsFromInventory(inventoriesRes.data);
+        }
+      } else {
+        alert('❌ すべての処理に失敗しました');
+      }
+    } catch (err) {
+      console.error('バッチ処理エラー:', err);
+      alert('❌ バッチ処理中にエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  };
   const renderStatsCards = () => (
     <div className="space-y-4">
       {/* フィルター情報表示 */}
@@ -413,26 +528,26 @@ const Inventory: React.FC = () => {
         </div>
       )}
 
-      {/* 一般ユーザー用メニュー */}
+      {/* 基本機能メニュー */}
       <div>
         <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-4 md:mb-6 flex items-center">
           <div className="w-1 h-4 md:h-6 bg-indigo-500 mr-3"></div>
           基本機能
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {userMenuItems.map(item => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto">
+          {basicMenuItems.map(item => (
             <Card
               key={item.key}
               className="group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-0 shadow-xl bg-white touch-manipulation"
               onClick={() => handleMenuClick(item.key)}
             >
               <CardContent className="p-0">
-                <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-4 md:p-6 rounded-lg`}>
+                <div className={`bg-gradient-to-r ${item.color} ${item.hoverColor} transition-all duration-300 p-6 md:p-8 rounded-lg`}>
                   <div className="flex flex-col items-center text-center">
-                    <div className="text-3xl md:text-4xl text-white mb-2 md:mb-3 drop-shadow-lg">{item.icon}</div>
+                    <div className="text-4xl md:text-5xl text-white mb-3 md:mb-4 drop-shadow-lg">{item.icon}</div>
                     <div className="text-white">
-                      <h3 className="text-sm md:text-lg font-bold mb-1 md:mb-2 drop-shadow-sm">{item.label}</h3>
-                      <p className="text-white/90 text-xs md:text-sm hidden md:block drop-shadow-sm">{item.description}</p>
+                      <h3 className="text-lg md:text-xl font-bold mb-2 drop-shadow-sm">{item.label}</h3>
+                      <p className="text-white/90 text-sm md:text-base drop-shadow-sm">{item.description}</p>
                     </div>
                   </div>
                 </div>
@@ -474,52 +589,33 @@ const Inventory: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col md:flex-row gap-2 w-full lg:w-auto">
-                {/* CSVエクスポートボタン群 */}
-                <div className="flex flex-wrap gap-2">
+                {/* QRラベル印刷ボタン */}
+                <div className="flex gap-2 mb-2 md:mb-0">
                   <Button 
-                    onClick={() => {
-                      const dataToExport = hasActiveFilters(filters) ? filteredInventoryList : inventoryList;
-                      exportInventoryToCSV(dataToExport);
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white text-sm py-2 px-3"
-                    title={hasActiveFilters(filters) ? "フィルター結果をCSVでエクスポート" : "全在庫データをCSVでエクスポート"}
+                    onClick={() => setShowQRLabelDialog(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-3"
+                    title="選択商品のQRラベルを印刷用Excel出力"
                   >
-                    <FaFileExcel className="mr-1" />
-                    {hasActiveFilters(filters) ? 'フィルター結果CSV' : '全在庫CSV'}
+                    <FaPrint className="mr-1" />
+                    QRラベル印刷
                   </Button>
-                  <Button 
-                    onClick={() => {
-                      const lowStockItems = filteredInventoryList.filter(item => item.stock_quantity <= item.lowest_stock);
-                      if (lowStockItems.length === 0) {
-                        alert(hasActiveFilters(filters) ? "フィルター結果に在庫不足商品がありません。" : "在庫不足商品がありません。");
-                        return;
-                      }
-                      exportLowStockToCSV(lowStockItems);
-                    }}
-                    className="bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-3"
-                    title="在庫不足商品をCSVでエクスポート"
-                  >
-                    <FaExclamationTriangle className="mr-1" />
-                    不足商品CSV
-                  </Button>
-                  <Button 
-                    onClick={() => {
-                      const dataToExport = hasActiveFilters(filters) ? filteredInventoryList : inventoryList;
-                      exportInventorySummaryToCSV(dataToExport);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-2 px-3"
-                    title="在庫サマリーをCSVでエクスポート"
-                  >
-                    <FaFileAlt className="mr-1" />
-                    サマリーCSV
-                  </Button>
+                  {selectedItemsForPrint.size > 0 && (
+                    <Button 
+                      onClick={() => setSelectedItemsForPrint(new Set())}
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50 text-sm py-2 px-3"
+                      title="選択をクリア"
+                    >
+                      選択解除 ({selectedItemsForPrint.size})
+                    </Button>
+                  )}
                 </div>
                 
-                {/* 既存のボタン */}
+                {/* 機能ボタン */}
                 <div className="flex gap-2">
                   <Button 
                     onClick={() => {
-                      setPreviousScreen('check');
+                      setPreviousScreen('inventory_list');
                       fetchMovements();
                       setSelected('history');
                     }}
@@ -550,11 +646,33 @@ const Inventory: React.FC = () => {
                   return (
                     <Card 
                       key={item.id} 
-                      className="border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer" 
-                      onClick={() => setSelectedItem(item)}
+                      className={`border transition-all ${
+                        selectedItemsForPrint.has(item.id) 
+                          ? 'border-blue-500 bg-blue-50 shadow-lg' 
+                          : 'border-gray-200 hover:shadow-lg'
+                      }`}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
+                          {/* チェックボックス */}
+                          <div className="flex-shrink-0 pt-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedItemsForPrint.has(item.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const newSelection = new Set(selectedItemsForPrint);
+                                if (e.target.checked) {
+                                  newSelection.add(item.id);
+                                } else {
+                                  newSelection.delete(item.id);
+                                }
+                                setSelectedItemsForPrint(newSelection);
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                          </div>
+                          
                           {/* 商品画像 */}
                           <div className="flex-shrink-0">
                             {item.image ? (
@@ -569,8 +687,12 @@ const Inventory: React.FC = () => {
                           </div>
                           
                           {/* 商品情報 */}
-                          <div className="flex-1 min-w-0">
+                          <div 
+                            className="flex-1 min-w-0 cursor-pointer" 
+                            onClick={() => setSelectedItem(item)}
+                          >
                             <h3 className="font-medium text-gray-900 truncate">{item.product_name}</h3>
+                            <p className="text-xs text-gray-500 truncate">{item.item_code}</p>
                             <p className="text-sm text-gray-600 mt-1">
                               <span className={`font-bold ${item.stock_quantity <= item.lowest_stock ? 'text-red-600' : 'text-blue-900'}`}>
                                 {item.stock_quantity}
@@ -579,10 +701,16 @@ const Inventory: React.FC = () => {
                             </p>
                             
                             {/* ステータスバッジ */}
-                            <div className="mt-2">
+                            <div className="mt-2 flex items-center gap-2">
                               <Badge className={`${statusConfig.color} ${statusConfig.textColor} text-xs`}>
                                 {statusConfig.label}
                               </Badge>
+                              {selectedItemsForPrint.has(item.id) && (
+                                <Badge className="bg-blue-100 text-blue-700 text-xs">
+                                  <FaPrint className="mr-1" />
+                                  印刷対象
+                                </Badge>
+                              )}
                             </div>
                             
                             {/* クリック案内 */}
@@ -608,128 +736,325 @@ const Inventory: React.FC = () => {
     );
   };
 
-  // 在庫移動フォーム
-  const renderStockMovementForm = (movementType: 'in' | 'out') => {
-    const isInbound = movementType === 'in';
-    
+  // 登録方法選択画面
+  const renderStockOperations = () => {
     return (
-      <Card className="shadow-xl bg-white border-0">
-        <CardHeader className={`bg-gradient-to-r ${isInbound ? 'from-emerald-50 to-emerald-100 border-emerald-200' : 'from-orange-50 to-orange-100 border-orange-200'} border-b`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-3 ${isInbound ? 'bg-emerald-600' : 'bg-orange-600'} rounded-full`}>
-                {isInbound ? <FaTruck className="text-xl text-white" /> : <FaArrowUp className="text-xl text-white" />}
+      <div className="space-y-6">
+        {/* ヘッダー */}
+        <Card className="shadow-xl bg-white border-0">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-600 rounded-full">
+                  <FaTruck className="text-xl text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-blue-900 text-xl">入出庫登録</CardTitle>
+                  <p className="text-blue-700 text-sm">登録方法を選択してください</p>
+                </div>
               </div>
+              <Button 
+                onClick={() => setSelected(null)}
+                variant="outline"
+                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                <FaArrowLeft className="mr-2" />
+                戻る
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* 登録方法選択 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          {/* QRスキャン登録 */}
+          <Card
+            className="group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-0 shadow-xl bg-white touch-manipulation"
+            onClick={() => setSelected("qr_registration")}
+          >
+            <CardContent className="p-0">
+              <div className="bg-gradient-to-r from-green-400 via-emerald-500 to-green-600 group-hover:from-green-500 group-hover:via-emerald-600 group-hover:to-green-700 transition-all duration-300 p-6 md:p-8 rounded-lg">
+                <div className="flex flex-col items-center text-center">
+                  <div className="text-4xl md:text-5xl text-white mb-3 md:mb-4 drop-shadow-lg">
+                    <FaQrcode />
+                  </div>
+                  <div className="text-white">
+                    <h3 className="text-lg md:text-xl font-bold mb-2 drop-shadow-sm">QRスキャン登録</h3>
+                    <p className="text-white/90 text-sm md:text-base drop-shadow-sm">
+                      スマホカメラでQRコードを読み取り<br />
+                      連続で複数商品を登録
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 手動登録 */}
+          <Card
+            className="group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] border-0 shadow-xl bg-white touch-manipulation"
+            onClick={() => setSelected("manual_registration")}
+          >
+            <CardContent className="p-0">
+              <div className="bg-gradient-to-r from-purple-400 via-indigo-500 to-purple-600 group-hover:from-purple-500 group-hover:via-indigo-600 group-hover:to-purple-700 transition-all duration-300 p-6 md:p-8 rounded-lg">
+                <div className="flex flex-col items-center text-center">
+                  <div className="text-4xl md:text-5xl text-white mb-3 md:mb-4 drop-shadow-lg">
+                    <FaClipboardList />
+                  </div>
+                  <div className="text-white">
+                    <h3 className="text-lg md:text-xl font-bold mb-2 drop-shadow-sm">手動登録</h3>
+                    <p className="text-white/90 text-sm md:text-base drop-shadow-sm">
+                      商品を選択して数量を入力<br />
+                      従来の登録方法
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  };
+
+  // QRスキャン登録画面
+  const renderQRRegistration = () => {
+    return (
+      <div className="space-y-6">
+        {/* ヘッダー */}
+        <Card className="shadow-xl bg-white border-0">
+          <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-green-600 rounded-full">
+                  <FaQrcode className="text-xl text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-green-900 text-xl">QRスキャン登録</CardTitle>
+                  <p className="text-green-700 text-sm">QRコードを読み取って入出庫を登録</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setSelected("stock_operations")}
+                variant="outline"
+                className="border-green-300 text-green-700 hover:bg-green-50"
+              >
+                <FaArrowLeft className="mr-2" />
+                戻る
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* スキャンタイプ選択 */}
+        <Card className="shadow-xl bg-white border-0">
+          <CardContent className="p-6">
+            <div className="mb-4">
+              <label className="block mb-2 font-semibold text-gray-700">登録タイプ</label>
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => setCurrentScanType('in')}
+                  className={`${currentScanType === 'in' ? 'bg-emerald-600 text-white' : 'bg-gray-200 text-gray-700'} hover:bg-emerald-700`}
+                >
+                  <FaPlus className="mr-2" />
+                  入荷
+                </Button>
+                <Button
+                  onClick={() => setCurrentScanType('out')}
+                  className={`${currentScanType === 'out' ? 'bg-orange-600 text-white' : 'bg-gray-200 text-gray-700'} hover:bg-orange-700`}
+                >
+                  <FaMinus className="mr-2" />
+                  出荷
+                </Button>
+              </div>
+            </div>
+
+            {/* QRスキャンボタン */}
+            <Button
+              onClick={() => setShowQRScanner(true)}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 text-lg font-semibold mb-4"
+            >
+              <FaQrcode className="mr-2" />
+              QRコードをスキャン ({currentScanType === 'in' ? '入荷' : '出荷'})
+            </Button>
+
+            {/* スキャン済み商品リスト */}
+            {scannedItems.length > 0 && (
+              <div className="space-y-4">
+                <h4 className="font-bold text-gray-900">スキャン済み商品 ({scannedItems.length}件)</h4>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {scannedItems.map((scannedItem, index) => (
+                    <div key={`${scannedItem.item.id}-${index}`} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Badge className={scannedItem.type === 'in' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
+                            {scannedItem.type === 'in' ? '入荷' : '出荷'}
+                          </Badge>
+                          <span className="font-medium">{scannedItem.item.product_name}</span>
+                        </div>
+                        <p className="text-sm text-gray-600">{scannedItem.item.item_code}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          onClick={() => updateScannedQuantity(scannedItem.item.id, scannedItem.quantity - 1)}
+                          size="sm"
+                          variant="outline"
+                          className="w-8 h-8 p-0"
+                        >
+                          <FaMinus />
+                        </Button>
+                        <span className="w-12 text-center font-bold">{scannedItem.quantity}</span>
+                        <Button
+                          onClick={() => updateScannedQuantity(scannedItem.item.id, scannedItem.quantity + 1)}
+                          size="sm"
+                          variant="outline"
+                          className="w-8 h-8 p-0"
+                        >
+                          <FaPlus />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* バッチ処理ボタン */}
+                <div className="flex gap-4 pt-4">
+                  <Button
+                    onClick={executeBatchMovements}
+                    disabled={loading}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold"
+                  >
+                    {loading ? "処理中..." : (
+                      <>
+                        <FaCheck className="mr-2" />
+                        一括処理実行 ({scannedItems.length}件)
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => setScannedItems([])}
+                    variant="outline"
+                    className="border-red-300 text-red-700 hover:bg-red-50"
+                    disabled={loading}
+                  >
+                    クリア
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
+  // 手動登録画面
+  const renderManualRegistration = () => {
+    return (
+      <div className="space-y-6">
+        {/* ヘッダー */}
+        <Card className="shadow-xl bg-white border-0">
+          <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-600 rounded-full">
+                  <FaClipboardList className="text-xl text-white" />
+                </div>
+                <div>
+                  <CardTitle className="text-purple-900 text-xl">手動登録</CardTitle>
+                  <p className="text-purple-700 text-sm">商品を選択して数量を入力</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setSelected("stock_operations")}
+                variant="outline"
+                className="border-purple-300 text-purple-700 hover:bg-purple-50"
+              >
+                <FaArrowLeft className="mr-2" />
+                戻る
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {/* 手動登録フォーム */}
+        <Card className="shadow-xl bg-white border-0">
+          <CardContent className="p-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* 商品選択 */}
               <div>
-                <CardTitle className={`${isInbound ? 'text-emerald-900' : 'text-orange-900'} text-xl`}>
-                  {isInbound ? '在庫入荷' : '在庫出荷'}
-                </CardTitle>
-                <p className={`${isInbound ? 'text-emerald-700' : 'text-orange-700'} text-sm`}>
-                  {isInbound ? '商品の入荷処理と数量更新' : '商品の出荷処理と在庫減算'}
-                </p>
+                <label className="block mb-2 font-semibold text-gray-700">商品名 *</label>
+                <select
+                  required
+                  value={movementForm.item_id}
+                  onChange={(e) => setMovementForm(prev => ({ ...prev, item_id: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                >
+                  <option value="">商品を選択</option>
+                  {inventoryList.map(item => (
+                    <option key={item.id} value={item.id}>
+                      {item.product_name} ({item.item_code}) - 現在庫: {item.stock_quantity}{item.unit}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 個数 */}
+              <div>
+                <label className="block mb-2 font-semibold text-gray-700">個数 *</label>
+                <input
+                  required
+                  type="number"
+                  min="1"
+                  value={movementForm.quantity}
+                  onChange={(e) => setMovementForm(prev => ({ ...prev, quantity: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  placeholder="個数を入力"
+                />
+              </div>
+
+              {/* 理由 */}
+              <div className="md:col-span-2">
+                <label className="block mb-2 font-semibold text-gray-700">理由</label>
+                <input
+                  value={movementForm.reason}
+                  onChange={(e) => setMovementForm(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                  placeholder="例: 新規仕入れ、販売出荷"
+                />
               </div>
             </div>
-            <Button 
-              onClick={() => setSelected(null)}
-              variant="outline"
-              className={`${isInbound ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' : 'border-orange-300 text-orange-700 hover:bg-orange-50'}`}
-            >
-              <FaArrowLeft className="mr-2" />
-              戻る
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-8">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* 商品選択 */}
-            <div>
-              <label className="block mb-2 font-semibold text-gray-700">商品名 *</label>
-              <select
-                required
-                value={movementForm.item_id}
-                onChange={(e) => setMovementForm(prev => ({ ...prev, item_id: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+
+            {/* 手動登録ボタン */}
+            <div className="flex gap-4 mt-6">
+              <Button
+                onClick={() => handleStockMovement('in')}
+                disabled={loading}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-lg font-semibold"
               >
-                <option value="">商品を選択</option>
-                {inventoryList.map(item => (
-                  <option key={item.id} value={item.id}>
-                    {item.product_name} ({item.item_code}) - 現在庫: {item.stock_quantity}{item.unit}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* 工場選択 */}
-            <div>
-              <label className="block mb-2 font-semibold text-gray-700">工場</label>
-              <select
-                value={movementForm.factory_id}
-                onChange={(e) => setMovementForm(prev => ({ ...prev, factory_id: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+                {loading ? "処理中..." : (
+                  <>
+                    <FaPlus className="mr-2" />
+                    入荷登録
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={() => handleStockMovement('out')}
+                disabled={loading}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-3 text-lg font-semibold"
               >
-                <option value="">工場を選択（任意）</option>
-                {factories.map(factory => (
-                  <option key={factory.id} value={factory.id}>{factory.factory_name}</option>
-                ))}
-              </select>
+                {loading ? "処理中..." : (
+                  <>
+                    <FaMinus className="mr-2" />
+                    出荷登録
+                  </>
+                )}
+              </Button>
             </div>
-
-            {/* 個数 */}
-            <div>
-              <label className="block mb-2 font-semibold text-gray-700">個数 *</label>
-              <input
-                required
-                type="number"
-                min="1"
-                value={movementForm.quantity}
-                onChange={(e) => setMovementForm(prev => ({ ...prev, quantity: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                placeholder="個数を入力"
-              />
-            </div>
-
-            {/* 理由 */}
-            <div>
-              <label className="block mb-2 font-semibold text-gray-700">理由</label>
-              <input
-                value={movementForm.reason}
-                onChange={(e) => setMovementForm(prev => ({ ...prev, reason: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
-                placeholder={isInbound ? "例: 新規仕入れ、返品入荷" : "例: 販売出荷、不良品返却"}
-              />
-            </div>
-          </div>
-
-          {/* ボタン */}
-          <div className="flex gap-4 mt-8">
-            <Button
-              onClick={() => handleStockMovement(movementType)}
-              disabled={loading}
-              className={`flex-1 ${isInbound ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-orange-600 hover:bg-orange-700'} text-white py-3 text-lg font-semibold`}
-            >
-              {loading ? "処理中..." : (
-                <>
-                  {isInbound ? <FaTruck className="mr-2" /> : <FaArrowUp className="mr-2" />}
-                  {isInbound ? '入荷実行' : '出荷実行'}
-                </>
-              )}
-            </Button>
-            <Button
-              onClick={() => {
-                setPreviousScreen(movementType === 'in' ? 'receiving' : 'shipping'); // 入荷・出荷画面から来たことを記録
-                fetchMovements();
-                setSelected('history');
-              }}
-              variant="outline"
-              className="flex-1 py-3 text-lg"
-              disabled={loading}
-            >
-              <FaHistory className="mr-2" />
-              移動履歴を確認
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     );
   };
 
@@ -899,7 +1224,7 @@ const Inventory: React.FC = () => {
           {!selected && renderMenuCards()}
 
           {/* 各機能の画面 */}
-          {selected === "check" && (
+          {selected === "inventory_list" && (
             <>
               {loading && (
                 <Card className="shadow-xl bg-white border-0">
@@ -923,6 +1248,10 @@ const Inventory: React.FC = () => {
               {!loading && !error && renderInventoryTable()}
             </>
           )}
+          
+          {selected === "stock_operations" && renderStockOperations()}
+          {selected === "qr_registration" && renderQRRegistration()}
+          {selected === "manual_registration" && renderManualRegistration()}
           
           {/* 商品詳細表示（画面全体） */}
           {selectedItem && (
@@ -1063,9 +1392,26 @@ const Inventory: React.FC = () => {
               </div>
             </div>
           )}
-          {selected === "receiving" && renderStockMovementForm('in')}
-          {selected === "shipping" && renderStockMovementForm('out')}
           {selected === "history" && renderMovementHistory()}
+
+          {/* QRスキャナー */}
+          {showQRScanner && (
+            <QRScanner
+              onScan={handleQRScan}
+              onClose={() => setShowQRScanner(false)}
+              isActive={showQRScanner}
+            />
+          )}
+
+          {/* QRラベル印刷ダイアログ */}
+          {showQRLabelDialog && (
+            <QRLabelDialog
+              isOpen={showQRLabelDialog}
+              onClose={() => setShowQRLabelDialog(false)}
+              selectedItems={filteredInventoryList.filter(item => selectedItemsForPrint.has(item.id))}
+              allItems={filteredInventoryList}
+            />
+          )}
 
           {selected === "locations" && (
             <Card className="shadow-xl bg-white border-0">
